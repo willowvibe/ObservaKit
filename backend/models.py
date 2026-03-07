@@ -3,7 +3,7 @@ ObservaKit — SQLAlchemy Models & Database Engine
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     create_engine,
@@ -58,7 +58,7 @@ class FreshnessRecord(Base):
     last_updated_at = Column(DateTime, nullable=True)
     lag_seconds = Column(Float, nullable=True)
     status = Column(String(20), nullable=False, default="ok")  # ok | warn | fail
-    checked_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    checked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class VolumeRecord(Base):
@@ -73,7 +73,7 @@ class VolumeRecord(Base):
     rolling_avg = Column(Float, nullable=True)
     deviation_pct = Column(Float, nullable=True)
     is_anomaly = Column(Boolean, default=False)
-    recorded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class CheckResult(Base):
@@ -88,7 +88,7 @@ class CheckResult(Base):
     passed = Column(Boolean, nullable=False)
     metric_value = Column(Float, nullable=True)
     details = Column(Text, nullable=True)
-    executed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    executed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class SchemaSnapshot(Base):
@@ -99,7 +99,7 @@ class SchemaSnapshot(Base):
     id = Column(Integer, primary_key=True, index=True)
     table_name = Column(String(255), nullable=False, index=True)
     columns_json = Column(JSON, nullable=False)  # [{name, type, nullable, ordinal}]
-    snapshot_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    snapshot_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class SchemaDiff(Base):
@@ -113,7 +113,7 @@ class SchemaDiff(Base):
     column_name = Column(String(255), nullable=False)
     old_value = Column(String(255), nullable=True)
     new_value = Column(String(255), nullable=True)
-    detected_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    detected_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class AlertLog(Base):
@@ -126,7 +126,7 @@ class AlertLog(Base):
     channel = Column(String(50), nullable=False)  # slack | email
     table_name = Column(String(255), nullable=True)
     message = Column(Text, nullable=False)
-    sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    sent_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     success = Column(Boolean, default=True)
 
 
@@ -143,4 +143,4 @@ class PipelineRun(Base):
     start_time = Column(DateTime, nullable=True)
     end_time = Column(DateTime, nullable=True)
     duration_seconds = Column(Float, nullable=True)
-    recorded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

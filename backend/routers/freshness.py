@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Gauge
 from sqlalchemy.orm import Session
 
-from backend.models import get_db, FreshnessRecord
+from backend.auth import verify_api_key
+from backend.models import get_db, FreshnessRecord, AlertLog
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def list_freshness(
     ]
 
 
-@router.post("/poll")
+@router.post("/poll", dependencies=[Depends(verify_api_key)])
 def poll_freshness(db: Session = Depends(get_db)):
     """
     Trigger a freshness check for all configured tables.
@@ -133,9 +134,9 @@ def poll_freshness(db: Session = Depends(get_db)):
 
             results.append({"table": table_name, "lag_seconds": lag_seconds, "status": status})
 
-            # Trigger alert if needed
+            # Trigger alert if needed (with deduplication)
             if status in ("warn", "fail"):
-                _trigger_alert(table_name, lag_seconds, status, table_cfg.get("alert", "slack"))
+                _trigger_alert(table_name, lag_seconds, status, table_cfg.get("alert", "slack"), db)
 
         except Exception as e:
             logger.error(f"Freshness check failed for {table_name}: {e}")
@@ -159,9 +160,20 @@ def _parse_duration(duration_str: str) -> float:
     return float(duration_str)
 
 
-def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str):
-    """Dispatch a freshness alert."""
+def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db: Session):
+    """Dispatch a freshness alert with deduplication via AlertLog."""
+    from datetime import timedelta
     from alerts.base import get_alert_dispatcher
+
+    # Deduplication: skip if same table+type was alerted in the last 60 minutes
+    recent = db.query(AlertLog).filter(
+        AlertLog.table_name == table,
+        AlertLog.alert_type == "freshness",
+        AlertLog.sent_at >= datetime.now(timezone.utc) - timedelta(minutes=60),
+    ).first()
+    if recent:
+        logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
+        return
 
     message = (
         f"{'🔴' if status == 'fail' else '🟡'} Freshness Alert: {table}\n"
@@ -169,8 +181,20 @@ def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str):
         f"  Status: {status.upper()}\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
     )
+    success = False
     try:
         dispatcher = get_alert_dispatcher(channel)
         dispatcher.send(message)
+        success = True
     except Exception as e:
         logger.error(f"Failed to send freshness alert: {e}")
+
+    # Log the alert for deduplication and audit
+    alert_log = AlertLog(
+        alert_type="freshness",
+        channel=channel,
+        table_name=table,
+        message=message,
+        success=success,
+    )
+    db.add(alert_log)

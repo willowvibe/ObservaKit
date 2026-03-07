@@ -3,10 +3,12 @@ ObservaKit — Data Observability Starter Kit
 FastAPI Backend Service
 """
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import make_asgi_app
 
 from backend.models import engine, Base
 from backend.routers import freshness, checks, schema_diff, webhooks
@@ -33,14 +35,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow the Grafana frontend and local dev
+# CORS — allow Grafana frontend and local dev
+# Note: explicit origins required when allow_credentials=True (CORS spec)
+ALLOWED_ORIGINS = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://localhost:8000",
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---- Prometheus /metrics endpoint ----
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
 
 # ---- Routers ----
 app.include_router(freshness.router, prefix="/freshness", tags=["Freshness"])

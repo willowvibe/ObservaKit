@@ -1,6 +1,7 @@
 """
 ObservaKit — APScheduler for Standalone Mode
 Schedules freshness polling, volume checks, schema snapshots, and quality checks.
+Uses direct function calls instead of HTTP round-trips for reliability in Docker.
 """
 
 import os
@@ -17,11 +18,15 @@ _scheduler: BackgroundScheduler | None = None
 def _run_freshness_checks():
     """Trigger freshness checks for all configured tables."""
     logger.info("Scheduled freshness check triggered")
-    # Import here to avoid circular imports
-    import httpx
-
     try:
-        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/freshness/poll")
+        from backend.routers.freshness import poll_freshness
+        from backend.models import SessionLocal
+
+        db = SessionLocal()
+        try:
+            poll_freshness(db=db)
+        finally:
+            db.close()
     except Exception as e:
         logger.error(f"Freshness check failed: {e}")
 
@@ -29,10 +34,15 @@ def _run_freshness_checks():
 def _run_volume_checks():
     """Trigger volume anomaly checks."""
     logger.info("Scheduled volume check triggered")
-    import httpx
-
     try:
-        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/checks/volume")
+        from backend.routers.checks import run_volume_checks
+        from backend.models import SessionLocal
+
+        db = SessionLocal()
+        try:
+            run_volume_checks(db=db)
+        finally:
+            db.close()
     except Exception as e:
         logger.error(f"Volume check failed: {e}")
 
@@ -40,10 +50,15 @@ def _run_volume_checks():
 def _run_schema_checks():
     """Trigger schema drift detection."""
     logger.info("Scheduled schema check triggered")
-    import httpx
-
     try:
-        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/schema/snapshot")
+        from backend.routers.schema_diff import take_snapshot
+        from backend.models import SessionLocal
+
+        db = SessionLocal()
+        try:
+            take_snapshot(db=db)
+        finally:
+            db.close()
     except Exception as e:
         logger.error(f"Schema check failed: {e}")
 
@@ -51,10 +66,15 @@ def _run_schema_checks():
 def _run_quality_checks():
     """Trigger quality checks."""
     logger.info("Scheduled quality check triggered")
-    import httpx
-
     try:
-        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/checks/run")
+        from backend.routers.checks import run_quality_checks
+        from backend.models import SessionLocal
+
+        db = SessionLocal()
+        try:
+            run_quality_checks(db=db)
+        finally:
+            db.close()
     except Exception as e:
         logger.error(f"Quality check failed: {e}")
 
