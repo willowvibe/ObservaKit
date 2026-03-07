@@ -1,0 +1,9 @@
+# Great Expectations Check: No Null Primary Keys
+# Use as a reference for building GX checkpoint configs.
+
+expectations:
+  - expectation_type: expect_column_values_to_not_be_null
+    kwargs:
+      column: YOUR_PK_COLUMN
+    meta:
+      notes: "Primary key must never be null"

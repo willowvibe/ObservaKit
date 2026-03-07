@@ -1,0 +1,8 @@
+# Soda Check: Value Range
+# Copy to checks/my_project/ and edit table/column names.
+
+checks for YOUR_SCHEMA.YOUR_TABLE:
+  - min(YOUR_NUMERIC_COLUMN) >= 0:
+      name: "Values must be non-negative"
+  - max(YOUR_NUMERIC_COLUMN) <= 1000000:
+      name: "Values must be within expected range"

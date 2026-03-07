@@ -1,0 +1,9 @@
+# Great Expectations Check: No Duplicates
+# Use as a reference for building GX checkpoint configs.
+
+expectations:
+  - expectation_type: expect_column_values_to_be_unique
+    kwargs:
+      column: YOUR_COLUMN
+    meta:
+      notes: "Column must have unique values"

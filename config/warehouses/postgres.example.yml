@@ -1,0 +1,12 @@
+# PostgreSQL Warehouse Connection
+# Copy to config/warehouses/postgres.yml and edit with your credentials.
+
+connection:
+  host: ${WAREHOUSE_HOST:-localhost}
+  port: ${WAREHOUSE_PORT:-5432}
+  user: ${WAREHOUSE_USER}
+  password: ${WAREHOUSE_PASSWORD}
+  database: ${WAREHOUSE_DB}
+  schema: ${WAREHOUSE_SCHEMA:-public}
+  # Optional: SSL mode
+  # sslmode: require

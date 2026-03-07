@@ -1,0 +1,82 @@
+# =============================================================================
+# ObservaKit — Master Configuration
+# =============================================================================
+
+# Active warehouse connection (references config/warehouses/*.yml)
+warehouse:
+  type: postgres  # postgres | bigquery | snowflake
+  config_file: config/warehouses/postgres.yml
+
+# Orchestrator integration
+orchestrator:
+  type: airflow  # airflow | prefect | none
+  # Airflow settings (override with env vars)
+  airflow:
+    base_url: ${AIRFLOW_BASE_URL:-http://localhost:8080}
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+  # Prefect settings
+  prefect:
+    api_url: ${PREFECT_API_URL:-http://localhost:4200/api}
+
+# ---- Freshness Monitor ----
+freshness:
+  enabled: true
+  schedule_minutes: 15
+  tables:
+    - table: public.orders
+      timestamp_column: updated_at
+      warn_after: 1h
+      fail_after: 2h
+      alert: slack
+    # Add more tables below:
+    # - table: public.customers
+    #   timestamp_column: modified_at
+    #   warn_after: 6h
+    #   fail_after: 12h
+    #   alert: email
+
+# ---- Volume Monitor ----
+volume:
+  enabled: true
+  schedule_minutes: 60
+  rolling_window_days: 7
+  tables:
+    - table: public.orders
+      dag_id: load_orders
+      anomaly_threshold: 0.3  # ±30% deviation from rolling avg
+      alert: slack
+    # Add more tables below:
+    # - table: public.customers
+    #   dag_id: load_customers
+    #   anomaly_threshold: 0.5
+    #   alert: slack
+
+# ---- Schema Drift ----
+schema_drift:
+  enabled: true
+  schedule_minutes: 360
+  tables:
+    - public.orders
+    - public.customers
+  alert: slack
+
+# ---- Quality Checks ----
+quality:
+  enabled: true
+  schedule_minutes: 60
+  engine: soda  # soda | great_expectations
+  checks_dir: checks/my_project/
+
+# ---- Alerting ----
+alerts:
+  slack:
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    channel: ${SLACK_CHANNEL:-#data-alerts}
+    username: ObservaKit
+    icon_emoji: ":mag:"
+  email:
+    smtp_host: ${SMTP_HOST:-smtp.gmail.com}
+    smtp_port: ${SMTP_PORT:-587}
+    from: ${ALERT_EMAIL_FROM}
+    to: ${ALERT_EMAIL_TO}

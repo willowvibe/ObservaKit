@@ -1,0 +1,6 @@
+# Soda Check: No Duplicate Values
+# Copy to checks/my_project/ and edit table/column names.
+
+checks for YOUR_SCHEMA.YOUR_TABLE:
+  - duplicate_count(YOUR_COLUMN) = 0:
+      name: "Column must have no duplicates"

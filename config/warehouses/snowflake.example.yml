@@ -1,0 +1,12 @@
+# Snowflake Warehouse Connection
+# Copy to config/warehouses/snowflake.yml and edit with your credentials.
+
+connection:
+  account: ${SNOWFLAKE_ACCOUNT}
+  user: ${SNOWFLAKE_USER}
+  password: ${SNOWFLAKE_PASSWORD}
+  warehouse: ${SNOWFLAKE_WAREHOUSE}
+  database: ${SNOWFLAKE_DATABASE}
+  schema: ${SNOWFLAKE_SCHEMA:-public}
+  # Optional: role
+  # role: SYSADMIN

@@ -1,0 +1,73 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "title": "Check Pass/Fail Trend",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (table) (observakit_check_results_total{passed=\"true\"})",
+          "legendFormat": "{{table}} - passed"
+        },
+        {
+          "expr": "sum by (table) (observakit_check_results_total{passed=\"false\"})",
+          "legendFormat": "{{table}} - failed"
+        }
+      ]
+    },
+    {
+      "title": "Recent Check Results",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "expr": "observakit_check_result_info",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "title": "Check Pass Rate by Table",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "expr": "sum(observakit_check_results_total{passed=\"true\"}) by (table) / sum(observakit_check_results_total) by (table) * 100",
+          "legendFormat": "{{table}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "green", "value": 95 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Checks Executed (24h)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "expr": "sum(increase(observakit_check_results_total[24h]))",
+          "legendFormat": "Total checks"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["observakit", "quality"],
+  "time": { "from": "now-7d", "to": "now" },
+  "title": "Quality Trends",
+  "uid": "observakit-quality-trends"
+}

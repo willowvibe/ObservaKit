@@ -1,0 +1,12 @@
+# Example Quality Checks — orders table
+# These checks work with the sample data referenced in the quickstart guide.
+
+checks for public.orders:
+  - row_count > 0:
+      name: "Orders table must not be empty"
+  - missing_count(order_id) = 0:
+      name: "order_id must not be null"
+  - duplicate_count(order_id) = 0:
+      name: "order_id must be unique"
+  - min(amount) >= 0:
+      name: "Order amount must be non-negative"

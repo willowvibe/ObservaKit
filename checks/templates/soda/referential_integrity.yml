@@ -1,0 +1,6 @@
+# Soda Check: Referential Integrity
+# Copy to checks/my_project/ and edit table/column names.
+
+checks for YOUR_SCHEMA.YOUR_CHILD_TABLE:
+  - values in (YOUR_FK_COLUMN) must exist in YOUR_SCHEMA.YOUR_PARENT_TABLE (YOUR_PK_COLUMN):
+      name: "Foreign key must reference existing parent"

@@ -1,0 +1,9 @@
+# BigQuery Warehouse Connection
+# Copy to config/warehouses/bigquery.yml and edit with your credentials.
+
+connection:
+  project: ${BIGQUERY_PROJECT}
+  dataset: ${BIGQUERY_DATASET}
+  credentials_path: ${BIGQUERY_CREDENTIALS_PATH:-/app/config/bigquery-credentials.json}
+  # Optional: location
+  # location: US

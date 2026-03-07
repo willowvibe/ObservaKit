@@ -1,0 +1,6 @@
+# Soda Check: Minimum Row Count
+# Copy to checks/my_project/ and edit table/column names.
+
+checks for YOUR_SCHEMA.YOUR_TABLE:
+  - row_count > 0:
+      name: "Table must not be empty"

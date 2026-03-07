@@ -1,0 +1,120 @@
+"""
+ObservaKit — APScheduler for Standalone Mode
+Schedules freshness polling, volume checks, schema snapshots, and quality checks.
+"""
+
+import os
+import logging
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+logger = logging.getLogger(__name__)
+
+_scheduler: BackgroundScheduler | None = None
+
+
+def _run_freshness_checks():
+    """Trigger freshness checks for all configured tables."""
+    logger.info("Scheduled freshness check triggered")
+    # Import here to avoid circular imports
+    import httpx
+
+    try:
+        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/freshness/poll")
+    except Exception as e:
+        logger.error(f"Freshness check failed: {e}")
+
+
+def _run_volume_checks():
+    """Trigger volume anomaly checks."""
+    logger.info("Scheduled volume check triggered")
+    import httpx
+
+    try:
+        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/checks/volume")
+    except Exception as e:
+        logger.error(f"Volume check failed: {e}")
+
+
+def _run_schema_checks():
+    """Trigger schema drift detection."""
+    logger.info("Scheduled schema check triggered")
+    import httpx
+
+    try:
+        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/schema/snapshot")
+    except Exception as e:
+        logger.error(f"Schema check failed: {e}")
+
+
+def _run_quality_checks():
+    """Trigger quality checks."""
+    logger.info("Scheduled quality check triggered")
+    import httpx
+
+    try:
+        httpx.post(f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}/checks/run")
+    except Exception as e:
+        logger.error(f"Quality check failed: {e}")
+
+
+def start_scheduler():
+    """Start the APScheduler background scheduler."""
+    global _scheduler
+
+    _scheduler = BackgroundScheduler()
+
+    freshness_interval = int(os.getenv("FRESHNESS_CHECK_INTERVAL", "15"))
+    volume_interval = int(os.getenv("VOLUME_CHECK_INTERVAL", "60"))
+    schema_interval = int(os.getenv("SCHEMA_CHECK_INTERVAL", "360"))
+    quality_interval = int(os.getenv("QUALITY_CHECK_INTERVAL", "60"))
+
+    _scheduler.add_job(
+        _run_freshness_checks,
+        trigger=IntervalTrigger(minutes=freshness_interval),
+        id="freshness_check",
+        name="Freshness Check",
+        replace_existing=True,
+    )
+
+    _scheduler.add_job(
+        _run_volume_checks,
+        trigger=IntervalTrigger(minutes=volume_interval),
+        id="volume_check",
+        name="Volume Check",
+        replace_existing=True,
+    )
+
+    _scheduler.add_job(
+        _run_schema_checks,
+        trigger=IntervalTrigger(minutes=schema_interval),
+        id="schema_check",
+        name="Schema Drift Check",
+        replace_existing=True,
+    )
+
+    _scheduler.add_job(
+        _run_quality_checks,
+        trigger=IntervalTrigger(minutes=quality_interval),
+        id="quality_check",
+        name="Quality Check",
+        replace_existing=True,
+    )
+
+    _scheduler.start()
+    logger.info(
+        "Scheduler started — freshness=%dmin, volume=%dmin, schema=%dmin, quality=%dmin",
+        freshness_interval,
+        volume_interval,
+        schema_interval,
+        quality_interval,
+    )
+
+
+def shutdown_scheduler():
+    """Gracefully shut down the scheduler."""
+    global _scheduler
+    if _scheduler:
+        _scheduler.shutdown(wait=False)
+        logger.info("Scheduler shut down")

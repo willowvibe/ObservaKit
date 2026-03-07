@@ -1,0 +1,6 @@
+# Soda Check: No Null Primary Keys
+# Copy to checks/my_project/ and edit table/column names.
+
+checks for YOUR_SCHEMA.YOUR_TABLE:
+  - missing_count(YOUR_PK_COLUMN) = 0:
+      name: "Primary key must not be null"
