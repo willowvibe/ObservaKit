@@ -3,8 +3,8 @@ ObservaKit — Airflow REST API Connector
 Pulls DAG run status, task durations, and SLA misses from Airflow.
 """
 
-import os
 import logging
+import os
 from typing import Optional
 
 import httpx

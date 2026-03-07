@@ -5,12 +5,11 @@ Snapshots information_schema and detects column-level changes.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.models import get_db, SchemaSnapshot, SchemaDiff
+from backend.models import SchemaDiff, SchemaSnapshot, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +209,11 @@ def _trigger_schema_alert(table: str, diffs: list, channel: str):
 
     changes_text = "\n".join(
         f"  - Column `{d['column']}` {d['change_type']}"
-        + (f": {d.get('old_type', '')} → {d.get('new_type', '')}" if d['change_type'] == 'type_changed' else "")
+        + (
+            f": {d.get('old_type', '')} → {d.get('new_type', '')}"
+            if d["change_type"] == "type_changed"
+            else ""
+        )
         for d in diffs
     )
     message = (

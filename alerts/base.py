@@ -3,7 +3,6 @@ ObservaKit — Base Alert Dispatcher
 Abstract base class and factory for alert dispatchers.
 """
 
-import os
 from abc import ABC, abstractmethod
 
 

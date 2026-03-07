@@ -19,7 +19,7 @@ test-cov: ## Run tests with coverage
 	PYTHONPATH=. pytest tests/ -v --cov=backend --cov-report=html
 
 lint: ## Run linter
-	ruff check . --select E,F,I,W
+	ruff check .
 
 format: ## Auto-format code
 	ruff format .

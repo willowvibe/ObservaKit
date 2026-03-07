@@ -3,9 +3,8 @@ ObservaKit — Prefect API Connector
 Pulls flow run status and task durations from Prefect.
 """
 
-import os
 import logging
-from typing import Optional
+import os
 
 import httpx
 

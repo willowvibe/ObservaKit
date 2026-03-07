@@ -39,7 +39,7 @@ jobs:
           pip install pytest pytest-cov ruff
 
       - name: Lint with ruff
-        run: ruff check . --select E,F,I
+        run: ruff check .
 
       - name: Run tests
         env:

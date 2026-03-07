@@ -4,13 +4,13 @@ Receives callbacks from Airflow and Prefect for pipeline health tracking.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from backend.models import get_db, PipelineRun
+from backend.models import PipelineRun, get_db
 
 logger = logging.getLogger(__name__)
 

@@ -3,8 +3,8 @@ ObservaKit — Slack Alert Dispatcher
 Sends alerts to Slack via incoming webhooks.
 """
 
-import os
 import logging
+import os
 
 import httpx
 

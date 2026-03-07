@@ -3,8 +3,8 @@ ObservaKit — PostgreSQL Warehouse Connector
 Connects to a PostgreSQL warehouse for freshness, volume, and schema queries.
 """
 
-import os
 import logging
+import os
 from datetime import datetime
 from typing import Optional
 

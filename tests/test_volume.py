@@ -2,8 +2,9 @@
 ObservaKit — Volume Monitor Tests
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
-from datetime import datetime, timezone, timedelta
 
 from backend.models import VolumeRecord
 
@@ -50,7 +51,7 @@ class TestVolumeModel:
         db_session.add_all([normal, anomaly])
         db_session.commit()
 
-        anomalies = db_session.query(VolumeRecord).filter(VolumeRecord.is_anomaly == True).all()
+        anomalies = db_session.query(VolumeRecord).filter(VolumeRecord.is_anomaly).all()
         assert len(anomalies) == 1
         assert anomalies[0].row_count == 100
         assert anomalies[0].deviation_pct == pytest.approx(0.98)

@@ -4,16 +4,15 @@ Triggers Soda/GX checks, stores results, and runs volume anomaly detection.
 """
 
 import logging
-import math
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Gauge
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from backend.models import get_db, CheckResult, VolumeRecord
+from backend.models import CheckResult, VolumeRecord, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +78,8 @@ def run_quality_checks(db: Session = Depends(get_db)):
     checks_dir = quality_config.get("checks_dir", "checks/my_project/")
 
     # Discover and run checks
-    import os
     import glob
+    import os
 
     check_files = glob.glob(os.path.join(checks_dir, "*.yml"))
     results = []
@@ -193,7 +192,9 @@ def run_volume_checks(db: Session = Depends(get_db)):
 
             # Alert on anomaly
             if is_anomaly:
-                _trigger_volume_alert(table_name, current_count, rolling_avg, deviation, table_cfg.get("alert", "slack"))
+                _trigger_volume_alert(
+                    table_name, current_count, rolling_avg, deviation, table_cfg.get("alert", "slack")
+                )
 
         except Exception as e:
             logger.error(f"Volume check failed for {table_name}: {e}")

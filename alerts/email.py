@@ -3,11 +3,11 @@ ObservaKit — Email Alert Dispatcher
 Sends alerts via SMTP email.
 """
 
-import os
 import logging
+import os
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from alerts.base import AlertDispatcher
 

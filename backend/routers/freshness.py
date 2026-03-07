@@ -12,7 +12,7 @@ from prometheus_client import Gauge
 from sqlalchemy.orm import Session
 
 from backend.auth import verify_api_key
-from backend.models import get_db, FreshnessRecord, AlertLog
+from backend.models import AlertLog, FreshnessRecord, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +163,7 @@ def _parse_duration(duration_str: str) -> float:
 def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db: Session):
     """Dispatch a freshness alert with deduplication via AlertLog."""
     from datetime import timedelta
+
     from alerts.base import get_alert_dispatcher
 
     # Deduplication: skip if same table+type was alerted in the last 60 minutes

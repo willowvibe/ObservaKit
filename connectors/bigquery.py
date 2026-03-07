@@ -3,8 +3,8 @@ ObservaKit — BigQuery Warehouse Connector
 Connects to Google BigQuery for freshness, volume, and schema queries.
 """
 
-import os
 import logging
+import os
 from datetime import datetime
 from typing import Optional
 

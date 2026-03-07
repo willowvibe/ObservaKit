@@ -3,11 +3,11 @@ ObservaKit — API Key Authentication Middleware
 Protects mutating endpoints with a simple API key.
 """
 
-import os
 import logging
+import os
 from typing import Optional
 
-from fastapi import Security, HTTPException, Depends
+from fastapi import HTTPException, Security
 from fastapi.security.api_key import APIKeyHeader
 
 logger = logging.getLogger(__name__)

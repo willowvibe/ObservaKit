@@ -2,10 +2,8 @@
 ObservaKit — Schema Drift Detection Tests
 """
 
-import pytest
-from datetime import datetime, timezone
 
-from backend.models import SchemaSnapshot, SchemaDiff
+from backend.models import SchemaDiff, SchemaSnapshot
 from backend.routers.schema_diff import _compute_diff
 
 

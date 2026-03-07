@@ -2,8 +2,7 @@
 ObservaKit — Freshness Monitor Tests
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from backend.models import FreshnessRecord
 from backend.routers.freshness import _parse_duration

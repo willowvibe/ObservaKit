@@ -2,8 +2,9 @@
 ObservaKit — Test fixtures and configuration.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -31,7 +32,12 @@ def mock_postgres_connector():
         {"name": "id", "type": "integer", "nullable": "NO", "ordinal_position": 1},
         {"name": "name", "type": "character varying", "nullable": "YES", "ordinal_position": 2},
         {"name": "amount", "type": "numeric", "nullable": "YES", "ordinal_position": 3},
-        {"name": "created_at", "type": "timestamp with time zone", "nullable": "YES", "ordinal_position": 4},
+        {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "nullable": "YES",
+            "ordinal_position": 4,
+        },
     ]
     return connector
 

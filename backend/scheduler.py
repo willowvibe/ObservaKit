@@ -4,8 +4,8 @@ Schedules freshness polling, volume checks, schema snapshots, and quality checks
 Uses direct function calls instead of HTTP round-trips for reliability in Docker.
 """
 
-import os
 import logging
+import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -19,8 +19,8 @@ def _run_freshness_checks():
     """Trigger freshness checks for all configured tables."""
     logger.info("Scheduled freshness check triggered")
     try:
-        from backend.routers.freshness import poll_freshness
         from backend.models import SessionLocal
+        from backend.routers.freshness import poll_freshness
 
         db = SessionLocal()
         try:
@@ -35,8 +35,8 @@ def _run_volume_checks():
     """Trigger volume anomaly checks."""
     logger.info("Scheduled volume check triggered")
     try:
-        from backend.routers.checks import run_volume_checks
         from backend.models import SessionLocal
+        from backend.routers.checks import run_volume_checks
 
         db = SessionLocal()
         try:
@@ -51,8 +51,8 @@ def _run_schema_checks():
     """Trigger schema drift detection."""
     logger.info("Scheduled schema check triggered")
     try:
-        from backend.routers.schema_diff import take_snapshot
         from backend.models import SessionLocal
+        from backend.routers.schema_diff import take_snapshot
 
         db = SessionLocal()
         try:
@@ -67,8 +67,8 @@ def _run_quality_checks():
     """Trigger quality checks."""
     logger.info("Scheduled quality check triggered")
     try:
-        from backend.routers.checks import run_quality_checks
         from backend.models import SessionLocal
+        from backend.routers.checks import run_quality_checks
 
         db = SessionLocal()
         try:

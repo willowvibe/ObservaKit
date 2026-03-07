@@ -2,10 +2,11 @@
 ObservaKit — Connector Tests
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from connectors.base import get_warehouse_connector, get_orchestrator_connector
+import pytest
+
+from connectors.base import get_warehouse_connector
 
 
 class TestWarehouseConnectorFactory:

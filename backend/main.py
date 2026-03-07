@@ -10,9 +10,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
-from backend.models import engine, Base
-from backend.routers import freshness, checks, schema_diff, webhooks
-from backend.scheduler import start_scheduler, shutdown_scheduler
+from backend.models import Base, engine
+from backend.routers import checks, freshness, schema_diff, webhooks
+from backend.scheduler import shutdown_scheduler, start_scheduler
 
 
 @asynccontextmanager
