@@ -1,4 +1,5 @@
-# Grafana Datasource Provisioning
+# Grafana Datasource Provisioning — Prometheus
+# Auto-configured when Grafana starts via docker-compose
 apiVersion: 1
 
 datasources:

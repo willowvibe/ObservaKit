@@ -3,23 +3,35 @@ ObservaKit — Data Observability Starter Kit
 FastAPI Backend Service
 """
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from alembic.config import Config
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
-from backend.models import Base, engine
+from alembic import command
+from backend.auth import verify_api_key
 from backend.routers import checks, freshness, schema_diff, webhooks
 from backend.scheduler import shutdown_scheduler, start_scheduler
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan — init DB and start scheduler."""
-    # Create all tables on startup
-    Base.metadata.create_all(bind=engine)
+    """Application lifespan — run migrations and start scheduler."""
+    # Run Alembic migrations to ensure schema is up to date
+    try:
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations applied successfully.")
+    except Exception:
+        logger.exception("Failed to run Alembic migrations — falling back to create_all.")
+        from backend.models import Base, engine
+        Base.metadata.create_all(bind=engine)
     start_scheduler()
     yield
     shutdown_scheduler()
@@ -55,9 +67,24 @@ metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
 # ---- Routers ----
-app.include_router(freshness.router, prefix="/freshness", tags=["Freshness"])
-app.include_router(checks.router, prefix="/checks", tags=["Quality Checks"])
-app.include_router(schema_diff.router, prefix="/schema", tags=["Schema Drift"])
+app.include_router(
+    freshness.router,
+    prefix="/freshness",
+    tags=["Freshness"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    checks.router,
+    prefix="/checks",
+    tags=["Quality Checks"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    schema_diff.router,
+    prefix="/schema",
+    tags=["Schema Drift"],
+    dependencies=[Depends(verify_api_key)],
+)
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 
 

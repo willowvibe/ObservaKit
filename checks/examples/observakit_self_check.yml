@@ -1,0 +1,19 @@
+# Self-check: verifies ObservaKit's own metadata tables are healthy
+# Run against: the Postgres metadata store (METADATA_DB_*)
+# This requires zero external warehouse — validate your full setup on day one.
+
+checks for public.freshness_records:
+  - row_count >= 0:
+      name: "freshness_records table must exist and be queryable"
+  - missing_count(table_name) = 0:
+      name: "table_name must not be null"
+
+checks for public.check_results:
+  - row_count >= 0:
+      name: "check_results table must exist and be queryable"
+  - missing_count(check_name) = 0:
+      name: "check_name must not be null"
+
+checks for public.pipeline_runs:
+  - row_count >= 0:
+      name: "pipeline_runs table must exist and be queryable"
