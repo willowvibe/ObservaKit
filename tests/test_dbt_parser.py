@@ -1,9 +1,9 @@
-import os
 import json
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+from backend.models import CheckResult, PipelineRun
 from dbt_integration.parse_artifacts import parse_run_results
-from backend.models import PipelineRun, CheckResult
+
 
 def test_dbt_parser_success(tmp_path):
     # Create dummy dbt artifacts
@@ -26,7 +26,7 @@ def test_dbt_parser_success(tmp_path):
             }
         ]
     }
-    
+
     manifest_data = {
         "nodes": {
             "model.my_project.my_model": {
@@ -41,27 +41,27 @@ def test_dbt_parser_success(tmp_path):
             }
         }
     }
-    
+
     run_results_path = tmp_path / "run_results.json"
     manifest_path = tmp_path / "manifest.json"
-    
+
     with open(run_results_path, "w") as f:
         json.dump(run_results_data, f)
-        
+
     with open(manifest_path, "w") as f:
         json.dump(manifest_data, f)
-        
+
     # Mock the DB session
     mock_db = MagicMock()
-    
+
     with patch("dbt_integration.parse_artifacts.SessionLocal", return_value=mock_db):
         parse_run_results(str(run_results_path), str(manifest_path))
-        
+
         # Verify 2 records were added
         assert mock_db.add.call_count == 2
-        
+
         added_objects = [call[0][0] for call in mock_db.add.call_args_list]
-        
+
         # Verify PipelineRun
         pipeline_run = next((obj for obj in added_objects if isinstance(obj, PipelineRun)), None)
         assert pipeline_run is not None
@@ -70,7 +70,7 @@ def test_dbt_parser_success(tmp_path):
         assert pipeline_run.run_id == "dbt_test_inv_123_model.my_project.my_model"
         assert pipeline_run.state == "success"
         assert pipeline_run.duration_seconds == 1.5
-        
+
         # Verify CheckResult
         check_result = next((obj for obj in added_objects if isinstance(obj, CheckResult)), None)
         assert check_result is not None
