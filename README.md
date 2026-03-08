@@ -86,7 +86,14 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-### 4. Open Grafana
+### 4. Run the Demo Data Generator (Optional)
+To instantly see ObservaKit in action without hooking up your own database, generate 7 days of simulated history and inject data anomalies (like schema drift and volume drops):
+```bash
+python scripts/generate_mock_data.py
+```
+*(Once run, the dashboards will immediately populate with simulated pipeline failures and data quality alerts).*
+
+### 5. Open Grafana
 Visit `http://localhost:3000` (default: `admin / admin`)
 Dashboards are auto-provisioned under the **Data Observability** folder.
 
@@ -100,6 +107,18 @@ cp checks/templates/soda/no_nulls_on_pk.yml checks/my_project/orders.yml
 ```
 
 Checks run every hour by default. Override in `config/kit.yml`.
+
+## Use Cases
+
+### Data Migrations (Zero-Drift Guarantee)
+When migrating from legacy on-prem to a Cloud Lakehouse (e.g., Postgres to Snowflake), run ObservaKit in parallel to guarantee **zero schema drift** and **100% volume parity**. 
+- Connect ObservaKit to both source and destination.
+- Catch unsupported data type mappings early.
+- Ensure every single row makes it across.
+This turns ObservaKit into an automated audit layer for complex data migrations.
+
+### Pipeline Audits & Cost Observability
+Instantly identify silent failures, stale dashboards, and missing SLA targets. Future releases will include native integration for Cost Observability (e.g., Snowflake compute credits and BigQuery bytes billed).
 
 ## Architecture
 
