@@ -22,6 +22,11 @@ dependencies = [
     "alembic>=1.13.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/willowvibe/ObservaKit"
+"Bug Tracker" = "https://github.com/willowvibe/ObservaKit/issues"
+"Maintained By" = "https://github.com/willowvibe"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",

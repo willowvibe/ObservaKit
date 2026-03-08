@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: ObservaKit
+message: "If you use ObservaKit, please cite it."
+authors:
+  - family-names: "DataSynapse"
+    given-names: "WillowVibe"
+    affiliation: "WillowVibe"
+url: "https://github.com/willowvibe/ObservaKit"
+license: MIT

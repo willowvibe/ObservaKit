@@ -4,6 +4,12 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/maintained%20by-WillowVibe-6366f1?style=flat-square" />
+  <img src="https://img.shields.io/github/license/willowvibe/ObservaKit?style=flat-square" />
+  <img src="https://img.shields.io/github/stars/willowvibe/ObservaKit?style=flat-square" />
+</p>
+
+<p align="center">
   <a href="#quickstart">Quickstart</a> •
   <a href="#features">Features</a> •
   <a href="#architecture">Architecture</a> •

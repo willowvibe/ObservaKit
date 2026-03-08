@@ -32,6 +32,16 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to run Alembic migrations — falling back to create_all.")
         from backend.models import Base, engine
         Base.metadata.create_all(bind=engine)
+    logger.info(
+        "\n"
+        "  ╔═══════════════════════════════════════╗\n"
+        "  ║  🔭 ObservaKit v%s                    ║\n"
+        "  ║  Data Observability Starter Kit       ║\n"
+        "  ║  Built by WillowVibe DataSynapse      ║\n"
+        "  ║  https://github.com/willowvibe       ║\n"
+        "  ╚═══════════════════════════════════════╝",
+        app.version,
+    )
     start_scheduler()
     yield
     shutdown_scheduler()
@@ -101,6 +111,8 @@ async def root():
         "version": "0.1.2",
         "status": "running",
         "docs": "/docs",
+        "maintained_by": "WillowVibe DataSynapse",
+        "source": "https://github.com/willowvibe/ObservaKit",
     }
 
 

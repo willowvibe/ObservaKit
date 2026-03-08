@@ -193,7 +193,7 @@ def run_volume_checks(db: Session = Depends(get_db)):
             # Alert on anomaly
             if is_anomaly:
                 _trigger_volume_alert(
-                    table_name, current_count, rolling_avg, deviation, table_cfg.get("alert", "slack")
+                    table_name, current_count, rolling_avg, deviation, table_cfg.get("alert", "slack"), db
                 )
 
         except Exception as e:
@@ -204,9 +204,21 @@ def run_volume_checks(db: Session = Depends(get_db)):
     return {"checked": len(results), "results": results}
 
 
-def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, channel: str):
+def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, channel: str, db: Session):
     """Dispatch a volume anomaly alert."""
     from alerts.base import get_alert_dispatcher
+    from backend.models import AlertLog
+    from datetime import timedelta
+
+    # Deduplication: skip if same table+type was alerted in the last 60 minutes
+    recent = db.query(AlertLog).filter(
+        AlertLog.table_name == table,
+        AlertLog.alert_type == "volume",
+        AlertLog.sent_at >= datetime.now(timezone.utc) - timedelta(minutes=60),
+    ).first()
+    if recent:
+        logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
+        return
 
     message = (
         f"🔴 Volume Anomaly: {table}\n"
@@ -215,8 +227,20 @@ def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, 
         f"  Deviation: {deviation * 100:.1f}%\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
     )
+    success = False
     try:
         dispatcher = get_alert_dispatcher(channel)
         dispatcher.send(message)
+        success = True
     except Exception as e:
         logger.error(f"Failed to send volume alert: {e}")
+
+    # Log the alert for deduplication and audit
+    alert_log = AlertLog(
+        alert_type="volume",
+        channel=channel,
+        table_name=table,
+        message=message,
+        success=success,
+    )
+    db.add(alert_log)

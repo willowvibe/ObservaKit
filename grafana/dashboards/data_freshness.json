@@ -1,12 +1,19 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "graphTooltip": 1,
   "panels": [
     {
       "title": "Freshness Lag (seconds)",
       "type": "timeseries",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "data_freshness_lag_seconds",
@@ -18,9 +25,18 @@
           "unit": "s",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 3600 },
-              { "color": "red", "value": 7200 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3600
+              },
+              {
+                "color": "red",
+                "value": 7200
+              }
             ]
           }
         }
@@ -29,7 +45,12 @@
     {
       "title": "Freshness Status Overview",
       "type": "stat",
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 10 },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 10
+      },
       "targets": [
         {
           "expr": "count(data_freshness_lag_seconds < 3600)",
@@ -38,14 +59,22 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "green" }
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
         }
       }
     },
     {
       "title": "Tables with Warning",
       "type": "stat",
-      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 10 },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 10
+      },
       "targets": [
         {
           "expr": "count(data_freshness_lag_seconds >= 3600 and data_freshness_lag_seconds < 7200)",
@@ -54,14 +83,22 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "yellow" }
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "yellow"
+          }
         }
       }
     },
     {
       "title": "Tables in Failure",
       "type": "stat",
-      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 10 },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 10
+      },
       "targets": [
         {
           "expr": "count(data_freshness_lag_seconds >= 7200)",
@@ -70,14 +107,24 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "red" }
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
         }
       }
     }
   ],
   "schemaVersion": 39,
-  "tags": ["observakit", "freshness"],
-  "time": { "from": "now-24h", "to": "now" },
+  "tags": [
+    "observakit",
+    "freshness"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "title": "Data Freshness",
-  "uid": "observakit-data-freshness"
+  "uid": "observakit-data-freshness",
+  "description": "Built by WillowVibe DataSynapse — https://github.com/willowvibe"
 }

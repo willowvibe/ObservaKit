@@ -10,7 +10,12 @@
     {
       "title": "DAG Run Success Rate (7-day rolling)",
       "type": "gauge",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "sum(rate(observakit_pipeline_runs_total{state=\"success\"}[7d])) / sum(rate(observakit_pipeline_runs_total[7d])) * 100",
@@ -21,9 +26,18 @@
         "defaults": {
           "thresholds": {
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "yellow", "value": 80 },
-              { "color": "green", "value": 95 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
             ]
           },
           "unit": "percent",
@@ -34,7 +48,12 @@
     {
       "title": "Task Duration P50 / P95",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 8,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "histogram_quantile(0.50, rate(observakit_task_duration_seconds_bucket[1h]))",
@@ -46,13 +65,20 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "s" }
+        "defaults": {
+          "unit": "s"
+        }
       }
     },
     {
       "title": "SLA Miss Count",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 8 },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
       "targets": [
         {
           "expr": "sum(observakit_sla_misses_total)",
@@ -63,9 +89,18 @@
         "defaults": {
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 1 },
-              { "color": "red", "value": 5 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
             ]
           }
         }
@@ -74,7 +109,12 @@
     {
       "title": "DAG Runs by State",
       "type": "piechart",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
       "targets": [
         {
           "expr": "sum by (state) (observakit_pipeline_runs_total)",
@@ -85,7 +125,12 @@
     {
       "title": "Failure Heatmap by DAG × Hour",
       "type": "heatmap",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
       "targets": [
         {
           "expr": "sum by (dag_id, hour) (observakit_pipeline_failures_by_hour)",
@@ -96,7 +141,12 @@
     {
       "title": "Recent DAG Runs",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
       "targets": [
         {
           "expr": "observakit_pipeline_run_info",
@@ -107,9 +157,18 @@
     }
   ],
   "schemaVersion": 39,
-  "tags": ["observakit", "pipeline-health"],
-  "templating": { "list": [] },
-  "time": { "from": "now-7d", "to": "now" },
+  "tags": [
+    "observakit",
+    "pipeline-health"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "title": "Pipeline Health",
-  "uid": "observakit-pipeline-health"
+  "uid": "observakit-pipeline-health",
+  "description": "Built by WillowVibe DataSynapse — https://github.com/willowvibe"
 }

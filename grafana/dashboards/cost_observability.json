@@ -1,12 +1,19 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "graphTooltip": 1,
   "panels": [
     {
       "title": "Warehouse Compute Costs (Last 7 Days)",
       "type": "stat",
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "observakit_finops_costs",
@@ -15,12 +22,23 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 100 },
-              { "color": "red", "value": 500 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
             ]
           }
         }
@@ -29,7 +47,12 @@
     {
       "title": "Cost Spikes Trend",
       "type": "timeseries",
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "observakit_finops_costs",
@@ -39,8 +62,15 @@
     }
   ],
   "schemaVersion": 39,
-  "tags": ["observakit", "finops"],
-  "time": { "from": "now-7d", "to": "now" },
+  "tags": [
+    "observakit",
+    "finops"
+  ],
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "title": "Cost Observability",
-  "uid": "observakit-cost-observability"
+  "uid": "observakit-cost-observability",
+  "description": "Built by WillowVibe DataSynapse — https://github.com/willowvibe"
 }

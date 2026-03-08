@@ -1,12 +1,19 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "graphTooltip": 1,
   "panels": [
     {
       "title": "Row Counts Over Time",
       "type": "timeseries",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "data_volume_rows",
@@ -14,13 +21,20 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short" }
+        "defaults": {
+          "unit": "short"
+        }
       }
     },
     {
       "title": "Volume Anomalies",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
       "targets": [
         {
           "expr": "data_volume_rows",
@@ -32,7 +46,12 @@
     {
       "title": "Deviation from Rolling Average (%)",
       "type": "bargauge",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
       "targets": [
         {
           "expr": "observakit_volume_deviation_pct",
@@ -44,9 +63,18 @@
           "unit": "percent",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 20 },
-              { "color": "red", "value": 30 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
             ]
           }
         }
@@ -54,8 +82,15 @@
     }
   ],
   "schemaVersion": 39,
-  "tags": ["observakit", "volume"],
-  "time": { "from": "now-7d", "to": "now" },
+  "tags": [
+    "observakit",
+    "volume"
+  ],
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "title": "Volume Anomaly",
-  "uid": "observakit-volume-anomaly"
+  "uid": "observakit-volume-anomaly",
+  "description": "Built by WillowVibe DataSynapse — https://github.com/willowvibe"
 }

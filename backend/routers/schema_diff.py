@@ -72,7 +72,7 @@ def take_snapshot(db: Session = Depends(get_db)):
 
             # Alert if changes detected
             if diffs and schema_config.get("alert"):
-                _trigger_schema_alert(table_name, diffs, schema_config["alert"])
+                _trigger_schema_alert(table_name, diffs, schema_config["alert"], db)
 
         except Exception as e:
             logger.error(f"Schema snapshot failed for {table_name}: {e}")
@@ -203,9 +203,21 @@ def _compute_diff(table_name: str, old_columns: list, new_columns: list, db: Ses
     return diffs
 
 
-def _trigger_schema_alert(table: str, diffs: list, channel: str):
+def _trigger_schema_alert(table: str, diffs: list, channel: str, db: Session):
     """Dispatch a schema drift alert."""
     from alerts.base import get_alert_dispatcher
+    from backend.models import AlertLog
+    from datetime import timedelta
+
+    # Deduplication: skip if same table+type was alerted in the last 60 minutes
+    recent = db.query(AlertLog).filter(
+        AlertLog.table_name == table,
+        AlertLog.alert_type == "schema",
+        AlertLog.sent_at >= datetime.now(timezone.utc) - timedelta(minutes=60),
+    ).first()
+    if recent:
+        logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
+        return
 
     changes_text = "\n".join(
         f"  - Column `{d['column']}` {d['change_type']}"
@@ -221,8 +233,20 @@ def _trigger_schema_alert(table: str, diffs: list, channel: str):
         f"{changes_text}\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
     )
+    success = False
     try:
         dispatcher = get_alert_dispatcher(channel)
         dispatcher.send(message)
+        success = True
     except Exception as e:
         logger.error(f"Failed to send schema drift alert: {e}")
+
+    # Log the alert for deduplication and audit
+    alert_log = AlertLog(
+        alert_type="schema",
+        channel=channel,
+        table_name=table,
+        message=message,
+        success=success,
+    )
+    db.add(alert_log)
