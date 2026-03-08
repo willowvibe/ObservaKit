@@ -170,6 +170,11 @@ function App() {
       </main>
 
       <footer className="site-footer">
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+          <a href="https://www.willowvibe.com" target="_blank" rel="noreferrer">
+            <img src="/willowvibe-logo.png" alt="WillowVibe Logo" height="40" />
+          </a>
+        </div>
         <p>Built with ❤️ by Data Engineers at <a href="https://www.willowvibe.com" target="_blank" rel="noreferrer">WillowVibe DataSynapse</a>.</p>
       </footer>
     </>

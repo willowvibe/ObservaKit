@@ -1,4 +1,10 @@
 <p align="center">
+  <a href="https://www.willowvibe.com">
+    <img src="willowvibe-logo.png" alt="WillowVibe Logo" width="200" />
+  </a>
+</p>
+
+<p align="center">
   <h1 align="center">🔭 ObservaKit</h1>
   <p align="center">Data Observability Starter Kit for Small Teams</p>
 </p>
