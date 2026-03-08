@@ -37,7 +37,7 @@ function App() {
   return (
     <>
       <main>
-        <div className="badge animate-in">v0.1.4 • Open Source</div>
+        <div className="badge animate-in">v0.1.5 • Open Source</div>
         <h1 className="animate-in delay-1">Data Observability<br />Starter Kit</h1>
         <p className="subtitle animate-in delay-2">
           A self-hosted, Docker-Compose-ready observability layer that gives small data teams the 5 core observability pillars without needing a paid platform.

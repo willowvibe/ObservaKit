@@ -53,7 +53,7 @@ app = FastAPI(
         "Data Observability Starter Kit — self-hosted observability layer "
         "providing Freshness, Volume, Quality, Schema Drift, and Pipeline Health monitoring."
     ),
-    version="0.1.4",
+    version="0.1.5",
     lifespan=lifespan,
 )
 
@@ -108,7 +108,7 @@ app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 async def root():
     return {
         "service": "ObservaKit",
-        "version": "0.1.4",
+        "version": "0.1.5",
         "status": "running",
         "docs": "/docs",
         "maintained_by": "WillowVibe DataSynapse",
