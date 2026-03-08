@@ -206,9 +206,10 @@ def run_volume_checks(db: Session = Depends(get_db)):
 
 def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, channel: str, db: Session):
     """Dispatch a volume anomaly alert."""
+    from datetime import timedelta
+
     from alerts.base import get_alert_dispatcher
     from backend.models import AlertLog
-    from datetime import timedelta
 
     # Deduplication: skip if same table+type was alerted in the last 60 minutes
     recent = db.query(AlertLog).filter(
