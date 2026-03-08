@@ -79,6 +79,23 @@ def _run_quality_checks():
         logger.error(f"Quality check failed: {e}")
 
 
+def _run_finops_checks():
+    """Trigger FinOps cost checks."""
+    logger.info("Scheduled FinOps check triggered")
+    try:
+        from backend.models import SessionLocal
+        from backend.routers.finops import poll_finops_costs
+
+        db = SessionLocal()
+        try:
+           # Defaulting to 7 days for the scheduled check
+            poll_finops_costs(days=7, db=db)
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"FinOps check failed: {e}")
+
+
 def start_scheduler():
     """Start the APScheduler background scheduler."""
     global _scheduler
@@ -89,6 +106,7 @@ def start_scheduler():
     volume_interval = int(os.getenv("VOLUME_CHECK_INTERVAL", "60"))
     schema_interval = int(os.getenv("SCHEMA_CHECK_INTERVAL", "360"))
     quality_interval = int(os.getenv("QUALITY_CHECK_INTERVAL", "60"))
+    finops_interval = int(os.getenv("FINOPS_CHECK_INTERVAL", "720")) # Default 12 hours
 
     _scheduler.add_job(
         _run_freshness_checks,
@@ -122,13 +140,22 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    _scheduler.add_job(
+        _run_finops_checks,
+        trigger=IntervalTrigger(minutes=finops_interval),
+        id="finops_check",
+        name="FinOps Check",
+        replace_existing=True,
+    )
+
     _scheduler.start()
     logger.info(
-        "Scheduler started — freshness=%dmin, volume=%dmin, schema=%dmin, quality=%dmin",
+        "Scheduler started — freshness=%dmin, volume=%dmin, schema=%dmin, quality=%dmin, finops=%dmin",
         freshness_interval,
         volume_interval,
         schema_interval,
         quality_interval,
+        finops_interval,
     )
 
 

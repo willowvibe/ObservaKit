@@ -120,3 +120,7 @@ class PostgresConnector(WarehouseConnector):
             raise
         finally:
             self.close()
+
+    def get_compute_costs(self, days: int = 7) -> float:
+        """Postgres doesn't have Serverless compute costs, returning 0."""
+        return 0.0
