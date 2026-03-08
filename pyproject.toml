@@ -4,7 +4,7 @@ build-backend = "setuptools.backends._legacy:_Backend"
 
 [project]
 name = "observakit"
-version = "0.1.6"
+version = "0.1.7"
 description = "Data Observability Starter Kit for small teams"
 readme = "README.md"
 license = {text = "MIT"}
