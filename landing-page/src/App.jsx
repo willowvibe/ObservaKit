@@ -37,7 +37,7 @@ function App() {
   return (
     <>
       <main>
-        <div className="badge animate-in">v0.1.0 • Open Source</div>
+        <div className="badge animate-in">v0.1.2 • Open Source</div>
         <h1 className="animate-in delay-1">Data Observability<br />Starter Kit</h1>
         <p className="subtitle animate-in delay-2">
           A self-hosted, Docker-Compose-ready observability layer that gives small data teams the 5 core observability pillars without needing a paid platform.
@@ -96,18 +96,74 @@ function App() {
         </section>
 
         <section className="info-section case-study-section animate-in delay-3">
-          <h2>Case Study: Stopping Silent Legacy ETL Failures</h2>
-          <div className="case-study-content">
-            <p className="cs-lead"><strong>The Problem:</strong> A mid-sized fintech client had a sprawling legacy ETL pipeline that updated a critical `transactions` table. Due to upstream API timeouts, the pipeline would often write zero rows but still report as "Success", causing massive downstream reporting errors.</p>
-            <div className="cs-solution">
-              <h4>The ObservaKit Solution:</h4>
-              <ul>
-                <li><strong>Volume Tracking:</strong> Configured a daily row count tracker for the `transactions` table.</li>
-                <li><strong>Anomaly Detection:</strong> ObservaKit's Z-score ML algorithm detected a complete volume cliff compared to the 7-day moving average.</li>
-                <li><strong>Immediate Alerting:</strong> Fired a high-priority Slack alert with the Grafana anomaly link within 5 minutes of the ETL run finishing.</li>
-              </ul>
+          <h2>Case Study: The <span className="highlight">$100k</span> Silent Failure</h2>
+          <p className="cs-lead-text">How a mid-sized fintech caught a failing legagy pipeline before it reached the CEO's dashboard.</p>
+          
+          <div className="cs-grid">
+            {/* The Problem */}
+            <div className="cs-card cs-problem">
+              <div className="cs-card-header">
+                <span className="cs-icon">🚨</span>
+                <h3>The Problem</h3>
+              </div>
+              <p>An upstream API timeout caused their critical <code>transactions</code> ETL pipeline to quietly write <strong>zero rows</strong> overnight.</p>
+              <div className="cs-metric-box bad">
+                <span className="cs-metric-value">0</span>
+                <span className="cs-metric-label">Rows Written</span>
+              </div>
+              <p className="cs-sub">The pipeline technically "succeeded", silently destroying the integrity of their executive reporting.</p>
             </div>
-            <p className="cs-result"><strong>Result:</strong> Data Engineering caught the missing data layer before the 9 AM executive meeting, preserving data trust and saving hours of retroactive data patching.</p>
+
+            {/* Path/Arrow Desktop Only */}
+            <div className="cs-arrow">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+
+            {/* The Solution */}
+            <div className="cs-card cs-solution-new">
+              <div className="cs-card-header">
+                <span className="cs-icon">⚙️</span>
+                <h3>The ObservaKit Solution</h3>
+              </div>
+              <ul className="cs-feature-list">
+                <li>
+                  <strong>Volume Tracking:</strong> <span>Daily row count collection for `transactions`.</span>
+                </li>
+                <li>
+                  <strong>Anomaly Detection:</strong> <span>Z-score ML algorithm detected a 100% volume drop vs 7-day avg.</span>
+                </li>
+                <li>
+                  <strong>Instant Alerting:</strong> <span>Fired a high-priority Slack webhook with the Grafana link.</span>
+                </li>
+              </ul>
+              <div className="cs-metric-box neutral">
+                <span className="cs-metric-value">&lt; 5 min</span>
+                <span className="cs-metric-label">Time to Alert</span>
+              </div>
+            </div>
+
+            {/* Path/Arrow Desktop Only */}
+            <div className="cs-arrow">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+
+            {/* The Result */}
+            <div className="cs-card cs-result-new">
+              <div className="cs-card-header">
+                <span className="cs-icon">🏆</span>
+                <h3>The Result</h3>
+              </div>
+              <p>Data Engineering investigated the API timeout and backfilled the data at 8:15 AM—long before the 9:00 AM executive meeting.</p>
+              <div className="cs-metric-box good">
+                <span className="cs-metric-value">100%</span>
+                <span className="cs-metric-label">Data Trust Preserved</span>
+              </div>
+              <p className="cs-sub">Saved hours of retroactive "what went wrong" meetings and restored confidence in the data team.</p>
+            </div>
           </div>
         </section>
 
