@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # Try to get DB URL from environment, or use hardcoded default for simple execution
-DATABASE_URL = os.getenv("METADATA_DB_URL", "postgresql://observakit:observakit123@localhost:5432/observakit")
+DATABASE_URL = os.getenv("METADATA_DB_URL", "postgresql://observakit:changeme@localhost:5433/observakit")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -68,11 +68,12 @@ def parse_run_results(run_results_path: str, manifest_path: str):
             # --- 1. Top-Level Models/Seeds (Pipeline Runs) ---
             if resource_type in ["model", "seed", "snapshot"]:
                 run = PipelineRun(
-                    pipeline_name="dbt_core",
+                    orchestrator="dbt_core",
+                    dag_id="dbt_run",
                     run_id=f"dbt_{invocation_id}_{unique_id}",
-                    status=status,
+                    state="success" if status in ["success", "pass"] else "failed",
                     duration_seconds=execution_time,
-                    timestamp=timestamp
+                    end_time=timestamp
                 )
                 db.add(run)
 
@@ -85,9 +86,9 @@ def parse_run_results(run_results_path: str, manifest_path: str):
                     table_name=test_table,
                     check_name=str(unique_id),
                     check_type="dbt_test",
-                    status="passed" if status == "pass" else "failed",
-                    details={"error_message": str(result.get("message", "")), "execution_time": execution_time},
-                    timestamp=timestamp
+                    passed=True if status in ["pass", "success"] else False,
+                    details=json.dumps({"error_message": str(result.get("message", "")), "execution_time": execution_time}),
+                    executed_at=timestamp
                 )
                 db.add(check)
 

@@ -89,7 +89,7 @@ docker-compose up -d
 ### 4. Run the Demo Data Generator (Optional)
 To instantly see ObservaKit in action without hooking up your own database, generate 7 days of simulated history and inject data anomalies (like schema drift and volume drops):
 ```bash
-python scripts/generate_mock_data.py
+make demo
 ```
 *(Once run, the dashboards will immediately populate with simulated pipeline failures and data quality alerts).*
 

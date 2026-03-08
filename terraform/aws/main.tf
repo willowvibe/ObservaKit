@@ -48,6 +48,14 @@ resource "aws_security_group" "observakit_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Metadata Postgres"
+    from_port   = 5433
+    to_port     = 5433
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_ssh_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
