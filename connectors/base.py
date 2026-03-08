@@ -45,6 +45,11 @@ class WarehouseConnector(ABC):
         """Execute a raw SQL query and return results as dicts."""
         ...
 
+    @abstractmethod
+    def get_compute_costs(self, days: int = 7) -> float:
+        """Get the compute cost (credits or bytes billed) for the last N days."""
+        ...
+
 
 class OrchestratorConnector(ABC):
     """Abstract base class for orchestrator connectors (Airflow, Prefect)."""

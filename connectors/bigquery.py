@@ -117,3 +117,21 @@ class BigQueryConnector(WarehouseConnector):
         except Exception as e:
             logger.error(f"BigQuery error executing query: {e}")
             raise
+
+    def get_compute_costs(self, days: int = 7) -> float:
+        """Get total bytes billed over the last N days from INFORMATION_SCHEMA.JOBS."""
+        client = self.connect()
+        # Note: region must be specified; defaulting to region-us for demo purposes.
+        query = f"""
+            SELECT SUM(total_bytes_billed) as total_bytes
+            FROM `{self._project}.region-us.INFORMATION_SCHEMA.JOBS`
+            WHERE creation_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {days} DAY)
+        """
+        try:
+            result = client.query(query).result()
+            for row in result:
+                return float(row.total_bytes) if row.total_bytes else 0.0
+            return 0.0
+        except Exception as e:
+            logger.error(f"BigQuery error getting compute costs: {e}")
+            return 0.0

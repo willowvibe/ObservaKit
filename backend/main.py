@@ -14,7 +14,7 @@ from prometheus_client import make_asgi_app
 
 from alembic import command
 from backend.auth import verify_api_key
-from backend.routers import checks, freshness, schema_diff, webhooks
+from backend.routers import checks, finops, freshness, schema_diff, webhooks
 from backend.scheduler import shutdown_scheduler, start_scheduler
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,12 @@ app.include_router(
     schema_diff.router,
     prefix="/schema",
     tags=["Schema Drift"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    finops.router,
+    prefix="/finops",
+    tags=["FinOps"],
     dependencies=[Depends(verify_api_key)],
 )
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])

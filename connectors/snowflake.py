@@ -123,3 +123,22 @@ class SnowflakeConnector(WarehouseConnector):
             raise
         finally:
             self.close()
+
+    def get_compute_costs(self, days: int = 7) -> float:
+        """Get compute credits used over the last N days."""
+        conn = self.connect()
+        query = f"""
+            SELECT SUM(CREDITS_USED) as total_credits
+            FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY
+            WHERE START_TIME >= DATEADD(day, -{days}, CURRENT_TIMESTAMP())
+        """
+        try:
+            cur = conn.cursor()
+            cur.execute(query)
+            result = cur.fetchone()
+            return float(result[0]) if result and result[0] else 0.0
+        except Exception as e:
+            logger.error(f"Snowflake error getting compute costs: {e}")
+            return 0.0
+        finally:
+            self.close()
