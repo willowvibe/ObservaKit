@@ -27,7 +27,7 @@ flowchart TD
 
     subgraph Quality
         I[Soda Core / Great Expectations]
-        J[Elementary dbt package]
+        J[Native dbt parser]
     end
 
     subgraph Observability Stack
@@ -45,7 +45,7 @@ flowchart TD
     B -- SQL queries --> G
     B -- information_schema --> F
     B -- check execution --> I
-    J -- dbt run hooks --> D
+    J -- JSON artifacts --> D
     I -- results --> C
     C --> D
     E --> C
@@ -176,6 +176,26 @@ erDiagram
         datetime start_time
         datetime end_time
         float duration_seconds
+        datetime recorded_at
+    }
+    DbtRunResult {
+        int id PK
+        string run_id
+        string model_name
+        string status
+        float execution_time
+        int rows_affected
+        string compiled_sql
+        string error_message
+        datetime executed_at
+    }
+    FinOpsRecord {
+        int id PK
+        string warehouse
+        string entity_name
+        string metric_name
+        float metric_value
+        float estimated_cost_usd
         datetime recorded_at
     }
 ```

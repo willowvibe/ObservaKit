@@ -48,12 +48,18 @@ Snapshots `information_schema` and diffs against previous snapshots. Detects add
 ### 5. 🚀 Pipeline Health
 Pulls Airflow/Prefect metrics via REST API and OpenTelemetry. Pre-built Grafana dashboards for success rates, task durations, and SLA misses.
 
+### 6. 💸 FinOps Tracker
+Tracks Snowflake compute credits and BigQuery bytes billed natively, preventing runaway dashboard queries and exploding ETL costs.
+
+### 7. 🛠️ Native dbt Integration
+Parses `run_results.json` and `manifest.json` directly into ObservaKit's Postgres database, eliminating the need for third-party dbt packages like Elementary. 
+
 ## Tech Stack
 
 | Layer | Tool |
 |-------|------|
 | Data Quality | Soda Core + Great Expectations |
-| dbt Observability | Elementary OSS |
+| dbt Observability | Native `run_results.json` parser |
 | Pipeline Metrics | OpenTelemetry + Prometheus |
 | Dashboards | Grafana |
 | Backend API | FastAPI + SQLAlchemy |
@@ -143,7 +149,7 @@ flowchart TD
 
     subgraph Quality
         I[Soda Core / Great Expectations]
-        J[Elementary dbt package]
+        J[Native dbt parser]
     end
 
     subgraph Observability Stack
@@ -161,7 +167,7 @@ flowchart TD
     B -- SQL queries --> G
     B -- information_schema --> F
     B -- check execution --> I
-    J -- dbt run hooks --> D
+    J -- JSON artifacts --> D
     I -- results --> C
     C --> D
     E --> C
@@ -170,6 +176,8 @@ flowchart TD
     C -- Prometheus metrics --> L
     C -- alert trigger --> N
 ```
+
+## Project Structure
 
 ## Project Structure
 
@@ -188,6 +196,8 @@ ObservaKit/
 │   ├── models.py
 │   ├── scheduler.py
 │   └── routers/
+├── landing-page/       <-- Vite/React GitHub Pages site
+├── dbt_integration/    <-- Native parsing logic for dbt artifacts
 ├── connectors/
 ├── alerts/
 ├── otel/
@@ -196,8 +206,7 @@ ObservaKit/
 │   ├── dashboards/
 │   └── provisioning/
 ├── tests/
-├── docs/
-└── dbt_integration/
+└── docs/
 ```
 
 ## Contributing
