@@ -231,4 +231,4 @@ MIT License — free to use, modify, and distribute.
 
 ---
 
-**Built by [WillowVibe DataSynapse](https://github.com/willowvibe)** — AI-first data enablement for modern teams.
+**Built by [WillowVibe DataSynapse](https://www.willowvibe.com)** — AI-first data enablement for modern teams.

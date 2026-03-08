@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
         "  ║  🔭 ObservaKit v%s                    ║\n"
         "  ║  Data Observability Starter Kit       ║\n"
         "  ║  Built by WillowVibe DataSynapse      ║\n"
-        "  ║  https://github.com/willowvibe       ║\n"
+        "  ║  https://www.willowvibe.com           ║\n"
         "  ╚═══════════════════════════════════════╝",
         app.version,
     )
@@ -112,6 +112,7 @@ async def root():
         "status": "running",
         "docs": "/docs",
         "maintained_by": "WillowVibe DataSynapse",
+        "website": "https://www.willowvibe.com",
         "source": "https://github.com/willowvibe/ObservaKit",
     }
 

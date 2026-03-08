@@ -170,7 +170,7 @@ function App() {
       </main>
 
       <footer className="site-footer">
-        <p>Built with ❤️ by Data Engineers, for Data Engineers.</p>
+        <p>Built with ❤️ by Data Engineers at <a href="https://www.willowvibe.com" target="_blank" rel="noreferrer">WillowVibe DataSynapse</a>.</p>
       </footer>
     </>
   )
