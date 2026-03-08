@@ -47,14 +47,14 @@ def generate_warehouse_data():
 
         print("   - Injecting Volume Anomaly (Current row count drops by 40% from ~1700 to 1000)...")
         print("   - Injecting Freshness Anomaly (max updated_at is > 3 hours old)...")
-        
+
         values = []
         now = datetime.now(timezone.utc)
         for i in range(1000):
             # 3 to 4 hours ago for freshness anomaly
-            updated = now - timedelta(minutes=random.randint(180, 240)) 
+            updated = now - timedelta(minutes=random.randint(180, 240))
             values.append(f"('ORD-{i}', 'CUST-{i%100}', {random.uniform(10.0, 500.0):.2f}, 'completed', '{updated.isoformat()}')")
-        
+
         print("   - Injecting Quality Anomalies (NULL and duplicate order_id)...")
         # NULL primary key
         values[-2] = f"(NULL, 'CUST-X', 999.99, 'completed', '{(now - timedelta(minutes=180)).isoformat()}')"
@@ -67,9 +67,7 @@ def generate_warehouse_data():
 
 def generate_metadata_history():
     print("🚀 Generating ObservaKit historical metadata (7 days)...")
-    from backend.models import (
-        Base, VolumeRecord, FreshnessRecord, CheckResult, PipelineRun
-    )
+    from backend.models import Base, CheckResult, FreshnessRecord, PipelineRun, VolumeRecord
     engine = create_engine(METADATA_URL)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -86,7 +84,7 @@ def generate_metadata_history():
     print("   - Populating 7 days of Pipeline Runs, Volume Stats, and Quality Checks...")
     for day_offset in range(7, 0, -1):
         record_date = now - timedelta(days=day_offset)
-        
+
         # 1. Pipeline Runs (DAG successes and occasional failures)
         for hour in range(24):
             run_time = record_date.replace(hour=hour, minute=0, second=0)

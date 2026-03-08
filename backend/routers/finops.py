@@ -5,6 +5,7 @@ and exposes them as Prometheus metrics.
 """
 
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Gauge
 from sqlalchemy.orm import Session
@@ -28,10 +29,11 @@ def poll_finops_costs(days: int = 7, db: Session = Depends(get_db)):
     Trigger a cost check for the active warehouse.
     """
     import os
+
     from connectors.base import get_warehouse_connector
 
     warehouse_type = os.getenv("WAREHOUSE_TYPE", "postgres").lower()
-    
+
     # Postgres doesn't have Serverless compute costs, so skip tracking
     if warehouse_type == "postgres":
         return {"message": "FinOps tracking not applicable for self-hosted PostgreSQL."}
@@ -40,7 +42,7 @@ def poll_finops_costs(days: int = 7, db: Session = Depends(get_db)):
         connector = get_warehouse_connector()
         cost = connector.get_compute_costs(days=days)
         finops_cost_gauge.labels(warehouse=warehouse_type).set(cost)
-        
+
         return {
             "warehouse": warehouse_type,
             "cost_tracked": cost,
