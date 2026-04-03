@@ -19,16 +19,22 @@ from sqlalchemy import (
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # ---- Database Connection ----
-DATABASE_URL = (
-    f"postgresql://"
-    f"{os.getenv('METADATA_DB_USER', 'observakit')}:"
-    f"{os.getenv('METADATA_DB_PASSWORD', 'changeme')}@"
-    f"{os.getenv('METADATA_DB_HOST', 'localhost')}:"
-    f"{os.getenv('METADATA_DB_PORT', '5432')}/"
-    f"{os.getenv('METADATA_DB_NAME', 'observakit')}"
-)
+DB_TYPE = os.getenv("METADATA_DB_TYPE", "postgresql").lower()
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+if DB_TYPE == "sqlite":
+    DATABASE_URL = f"sqlite:///./observakit.db"
+    # SQLite needs special handling for threading
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    DATABASE_URL = (
+        f"postgresql://"
+        f"{os.getenv('METADATA_DB_USER', 'observakit')}:"
+        f"{os.getenv('METADATA_DB_PASSWORD', 'changeme')}@"
+        f"{os.getenv('METADATA_DB_HOST', 'localhost')}:"
+        f"{os.getenv('METADATA_DB_PORT', '5432')}/"
+        f"{os.getenv('METADATA_DB_NAME', 'observakit')}"
+    )
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -128,6 +134,23 @@ class AlertLog(Base):
     message = Column(Text, nullable=False)
     sent_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     success = Column(Boolean, default=True)
+
+
+class ColumnProfile(Base):
+    """Stores column-level statistics for data profiling."""
+
+    __tablename__ = "column_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    column_name = Column(String(255), nullable=False)
+    null_count = Column(Integer)
+    null_pct = Column(Float)
+    distinct_count = Column(Integer)
+    min_value = Column(String(255))  # stored as string for type flexibility
+    max_value = Column(String(255))
+    mean_value = Column(Float, nullable=True)
+    profiled_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class PipelineRun(Base):

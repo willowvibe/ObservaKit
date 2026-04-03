@@ -46,6 +46,20 @@ class WarehouseConnector(ABC):
         ...
 
     @abstractmethod
+    def get_soda_config(self) -> dict:
+        """Return configuration for Soda Core."""
+        ...
+
+    @abstractmethod
+    def get_gx_config(self) -> dict:
+        """Return configuration for Great Expectations."""
+        ...
+
+
+class CostConnector(ABC):
+    """Abstract base class for tracking compute costs."""
+
+    @abstractmethod
     def get_compute_costs(self, days: int = 7) -> float:
         """Get the compute cost (credits or bytes billed) for the last N days."""
         ...

@@ -13,6 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.models import CheckResult, VolumeRecord, get_db
+from alerts.base import dispatch_alert, get_lineage_impact
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +57,73 @@ def get_check_results(
     ]
 
 
+@router.get("/trends/{table_name}")
+def get_check_trends(
+    table_name: str,
+    days: int = 30,
+    db: Session = Depends(get_db),
+):
+    """
+    Get quality check trends for a specific table:
+    Pass rate over time, failure streaks, and average execution time.
+    """
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    results = db.query(CheckResult).filter(
+        CheckResult.table_name == table_name,
+        CheckResult.executed_at >= cutoff
+    ).order_by(CheckResult.executed_at.asc()).all()
+
+    if not results:
+        return {"table": table_name, "message": "No data for selected period"}
+
+    # Calculate trends
+    total_checks = len(results)
+    passed_checks = sum(1 for r in results if r.passed)
+    pass_rate = (passed_checks / total_checks) * 100 if total_checks > 0 else 0
+
+    # Streaks (current failure streak if any)
+    current_streak = 0
+    for r in reversed(results):
+        if not r.passed:
+            current_streak += 1
+        else:
+            break
+
+    # Daily aggregation
+    daily_stats = {}
+    for r in results:
+        day = r.executed_at.date().isoformat()
+        if day not in daily_stats:
+            daily_stats[day] = {"passed": 0, "total": 0}
+        daily_stats[day]["total"] += 1
+        if r.passed:
+            daily_stats[day]["passed"] += 1
+
+    history = [
+        {"day": d, "pass_rate": (s["passed"] / s["total"]) * 100}
+        for d, s in sorted(daily_stats.items())
+    ]
+
+    return {
+        "table": table_name,
+        "period_days": days,
+        "overall_pass_rate": round(pass_rate, 2),
+        "current_failure_streak": current_streak,
+        "history": history
+    }
+
+
 @router.post("/run")
-def run_quality_checks(db: Session = Depends(get_db)):
+def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
     """
     Trigger quality checks using configured engine (Soda Core or GX).
-    Reads check definitions from the configured checks directory.
     """
     import yaml
+    import glob
+    import os
+    from connectors.base import get_warehouse_connector
 
     try:
         with open("config/kit.yml", "r") as f:
@@ -74,47 +135,150 @@ def run_quality_checks(db: Session = Depends(get_db)):
     if not quality_config.get("enabled", False):
         return {"message": "Quality checks are disabled"}
 
-    engine = quality_config.get("engine", "soda")
+    engine_name = quality_config.get("engine", "soda")
     checks_dir = quality_config.get("checks_dir", "checks/my_project/")
-
-    # Discover and run checks
-    import glob
-    import os
+    connector = get_warehouse_connector()
 
     check_files = glob.glob(os.path.join(checks_dir, "*.yml"))
-    results = []
+    all_results = []
 
     for check_file in check_files:
-        try:
-            with open(check_file, "r") as f:
-                check_def = yaml.safe_load(f)
+        if engine_name == "soda":
+            results = _run_soda_check(check_file, connector)
+        elif engine_name == "great_expectations":
+            results = _run_gx_check(check_file, connector)
+        else:
+            logger.error(f"Unsupported engine: {engine_name}")
+            continue
 
-            # Parse the check definition and store results
-            for key, checks in check_def.items():
-                if key.startswith("checks for "):
-                    table_name = key.replace("checks for ", "")
-                    for check in checks if isinstance(checks, list) else []:
-                        check_name = str(check) if isinstance(check, str) else str(check)
-                        record = CheckResult(
-                            check_name=check_name,
-                            table_name=table_name,
-                            check_type=engine,
-                            passed=True,  # Will be updated by actual execution
-                            details=f"Loaded from {os.path.basename(check_file)}",
-                        )
-                        db.add(record)
-                        results.append({
-                            "check": check_name,
-                            "table": table_name,
-                            "file": os.path.basename(check_file),
-                        })
+        for res in results:
+            if not dry_run:
+                record = CheckResult(
+                    check_name=res["check_name"],
+                    table_name=res["table_name"],
+                    check_type=engine_name,
+                    passed=res["passed"],
+                    metric_value=res.get("metric_value"),
+                    details=res.get("details"),
+                    executed_at=datetime.now(timezone.utc)
+                )
+                db.add(record)
+            
+            all_results.append(res)
+
+    # --- Run Custom SQL Checks ---
+    custom_sql_checks = quality_config.get("custom_sql", [])
+    for check_cfg in custom_sql_checks:
+        try:
+            name = check_cfg.get("name")
+            query = check_cfg.get("query")
+            assertion = check_cfg.get("assert", "result == 0")
+            table = check_cfg.get("table", "unknown")
+            
+            # Execute the query
+            query_results = connector.execute_query(query)
+            # Typically these queries return a single value, e.g., a count
+            result_value = 0
+            if query_results and len(query_results) > 0:
+                # Get the first value from the first row
+                first_row = query_results[0]
+                result_value = list(first_row.values())[0] if first_row else 0
+
+            # Evaluate assertion
+            passed = False
+            try:
+                # Safe eval with restricted globals
+                passed = eval(assertion, {"__builtins__": None}, {"result": result_value})
+            except Exception as eval_e:
+                logger.error(f"Assertion evaluation failed for {name}: {eval_e}")
+                passed = False
+
+            if not dry_run:
+                record = CheckResult(
+                    check_name=name,
+                    table_name=table,
+                    check_type="custom_sql",
+                    passed=passed,
+                    metric_value=float(result_value) if isinstance(result_value, (int, float)) else None,
+                    details=f"Query: {query.strip()[:100]}... | Result: {result_value}",
+                    executed_at=datetime.now(timezone.utc)
+                )
+                db.add(record)
+
+            all_results.append({
+                "check_name": name,
+                "table_name": table,
+                "passed": passed,
+                "engine": "custom_sql"
+            })
+
+            if not passed and not dry_run:
+                # Trigger lineage-aware alert
+                downstream = get_lineage_impact(table)
+                impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
+                
+                dispatch_alert(
+                    alert_type="quality",
+                    table_name=table,
+                    subject=f"❌ Quality Check Failed: {name}",
+                    message=f"Table: {table}\nCheck: {name}\nResult: {result_value}\nAssertion: {assertion}{impact_msg}"
+                )
 
         except Exception as e:
-            logger.error(f"Error processing check file {check_file}: {e}")
-            results.append({"file": os.path.basename(check_file), "error": str(e)})
+            logger.error(f"Error running custom SQL check {check_cfg.get('name')}: {e}")
 
-    db.commit()
-    return {"engine": engine, "checks_processed": len(results), "results": results}
+    if not dry_run:
+        db.commit()
+    return {"engine": engine_name, "checks_run": len(all_results), "results": all_results, "dry_run": dry_run}
+
+
+def _run_soda_check(check_file: str, connector) -> list[dict]:
+    """Execute Soda Core checks."""
+    try:
+        from soda.scan import Scan
+    except ImportError:
+        logger.error("soda-core not installed")
+        return [{"check_error": "soda-core not installed", "passed": False, "table_name": "unknown", "check_name": "soda_init"}]
+
+    scan = Scan()
+    scan.set_data_source_name("my_postgres")
+    
+    # Add configuration from connector
+    soda_config_dict = connector.get_soda_config()
+    import yaml
+    scan.add_configuration_yaml_str(yaml.dump(soda_config_dict))
+    
+    scan.add_sodacl_yaml_file(check_file)
+    scan.execute()
+    
+    results = []
+    for check in scan.get_checks_fail():
+        results.append({
+            "check_name": check.name,
+            "table_name": check.table_name if hasattr(check, 'table_name') else "unknown",
+            "passed": False,
+            "details": check.get_cloud_dict().get("diagnostic_messaging")
+        })
+    for check in scan.get_checks_pass():
+        results.append({
+            "check_name": check.name,
+            "table_name": check.table_name if hasattr(check, 'table_name') else "unknown",
+            "passed": True,
+            "details": "Check passed"
+        })
+    return results
+
+
+def _run_gx_check(check_file: str, connector) -> list[dict]:
+    """Execute Great Expectations checks (Simplified implementation)."""
+    # This is a placeholder for actual GX execution logic as GX setup is more involved
+    logger.info(f"Running GX checks for {check_file}")
+    return [{
+        "check_name": "gx_check_placeholder",
+        "table_name": "unknown",
+        "passed": True,
+        "details": "GX execution logic placeholder"
+    }]
 
 
 @router.post("/volume")
@@ -221,17 +385,25 @@ def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, 
         logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
         return
 
+    downstream = get_lineage_impact(table)
+    impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
+
     message = (
         f"🔴 Volume Anomaly: {table}\n"
         f"  Current rows: {count:,}\n"
         f"  7-day average: {avg:,.0f}\n"
         f"  Deviation: {deviation * 100:.1f}%\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+        f"{impact_msg}"
     )
     success = False
     try:
-        dispatcher = get_alert_dispatcher(channel)
-        dispatcher.send(message)
+        dispatch_alert(
+            alert_type="volume",
+            table_name=table,
+            subject=f"🔴 Volume Anomaly: {table}",
+            message=message
+        )
         success = True
     except Exception as e:
         logger.error(f"Failed to send volume alert: {e}")

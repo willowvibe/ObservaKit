@@ -121,6 +121,34 @@ class PostgresConnector(WarehouseConnector):
         finally:
             self.close()
 
-    def get_compute_costs(self, days: int = 7) -> float:
-        """Postgres doesn't have Serverless compute costs, returning 0."""
-        return 0.0
+    def get_soda_config(self) -> dict:
+        """Return configuration for Soda Core."""
+        return {
+            "data_source my_postgres": {
+                "type": "postgres",
+                "host": self._config["host"],
+                "port": self._config["port"],
+                "username": self._config["user"],
+                "password": self._config["password"],
+                "database": self._config["dbname"],
+                "schema": "public",
+            }
+        }
+
+    def get_gx_config(self) -> dict:
+        """Return configuration for Great Expectations."""
+        return {
+            "name": "my_postgres_datasource",
+            "class_name": "Datasource",
+            "execution_engine": {
+                "class_name": "SqlAlchemyExecutionEngine",
+                "connection_string": f"postgresql://{self._config['user']}:{self._config['password']}@{self._config['host']}:{self._config['port']}/{self._config['dbname']}",
+            },
+            "data_connectors": {
+                "default_runtime_data_connector_name": {
+                    "class_name": "RuntimeDataConnector",
+                    "batch_identifiers": ["default_identifier_name"],
+                },
+            },
+        }
+

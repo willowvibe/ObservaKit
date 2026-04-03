@@ -67,9 +67,30 @@ quality:
   schedule_minutes: 60
   engine: soda  # soda | great_expectations
   checks_dir: checks/my_project/
+  custom_sql:
+    - name: "No orphaned order items"
+      query: |
+        SELECT COUNT(*) as count FROM order_items oi
+        LEFT JOIN orders o ON oi.order_id = o.id
+        WHERE o.id IS NULL
+      assert: "result == 0"
+      table: order_items
+      alert: slack
 
 # ---- Alerting ----
 alerts:
+  # Routing rules: match alerts to channels and recipients
+  routing:
+    - match:
+        alert_type: "schema"
+        table_pattern: "payments.*"
+      channel: slack
+      slack_channel: "#finance-data"
+    - match:
+        alert_type: "freshness"
+      channel: slack
+      slack_channel: "#data-freshness"
+
   slack:
     webhook_url: ${SLACK_WEBHOOK_URL}
     channel: ${SLACK_CHANNEL:-#data-alerts}
@@ -80,3 +101,13 @@ alerts:
     smtp_port: ${SMTP_PORT:-587}
     from: ${ALERT_EMAIL_FROM}
     to: ${ALERT_EMAIL_TO}
+
+# ---- Lineage ----
+lineage:
+  - table: public.orders
+    downstream:
+      - public.order_items
+      - reporting.daily_revenue
+  - table: public.customers
+    downstream:
+      - reporting.customer_activity

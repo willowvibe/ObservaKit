@@ -14,7 +14,7 @@ from prometheus_client import make_asgi_app
 
 from alembic import command
 from backend.auth import verify_api_key
-from backend.routers import checks, finops, freshness, schema_diff, webhooks
+from backend.routers import checks, finops, freshness, profiling, schema_diff, webhooks
 from backend.scheduler import shutdown_scheduler, start_scheduler
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,7 @@ app.include_router(
     tags=["FinOps"],
     dependencies=[Depends(verify_api_key)],
 )
+app.include_router(profiling.router, prefix="/profiling", tags=["Column Profiling"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 
 
@@ -117,6 +118,19 @@ async def root():
     }
 
 
-@app.get("/health", tags=["Health"])
-async def health_check():
-    return {"status": "healthy"}
+if __name__ == "__main__":
+    import argparse
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Run ObservaKit Backend")
+    parser.add_argument("--lite", action="store_true", help="Run in lite mode with SQLite")
+    args = parser.parse_args()
+
+    if args.lite:
+        logger.info("Starting in LITE mode...")
+        os.environ["METADATA_DB_TYPE"] = "sqlite"
+        # In lite mode, we might want to disable some heavyweight components
+        os.environ["OTEL_ENABLED"] = "false"
+        os.environ["PROMETHEUS_ENABLED"] = "false"
+
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
