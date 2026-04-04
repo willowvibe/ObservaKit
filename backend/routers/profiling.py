@@ -32,32 +32,34 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
     if row_count == 0:
         return {"message": f"Table {table_name} is empty, skipping profiling"}
 
+    warehouse_type = connector.__class__.__name__.lower()
     profiles = []
     for col in schema:
         col_name = col["name"]
         col_type = col["type"].lower()
-        
-        # Build profiling query
+
+        is_numeric = any(t in col_type for t in ["int", "decimal", "numeric", "float", "real", "double"])
+
+        # Use portable SQL instead of PostgreSQL-only FILTER clause.
+        # CAST(... AS CHAR) works on MySQL; CAST(... AS VARCHAR) on others;
+        # use a simple CAST(... AS TEXT) which is broadly supported.
+        mean_expr = f"AVG({col_name})" if is_numeric else "NULL"
+
         stats_query = f"""
-            SELECT 
-                COUNT(*) FILTER (WHERE {col_name} IS NULL) as null_count,
-                COUNT(DISTINCT {col_name}) as distinct_count,
-                MIN({col_name})::text as min_val,
-                MAX({col_name})::text as max_val
+            SELECT
+                SUM(CASE WHEN {col_name} IS NULL THEN 1 ELSE 0 END) AS null_count,
+                COUNT(DISTINCT {col_name}) AS distinct_count,
+                CAST(MIN({col_name}) AS VARCHAR) AS min_val,
+                CAST(MAX({col_name}) AS VARCHAR) AS max_val,
+                {mean_expr} AS mean_val
             FROM {table_name}
         """
-        
-        # Add mean for numeric types
-        if any(t in col_type for t in ["int", "decimal", "numeric", "float", "real"]):
-            stats_query = stats_query.replace("FROM", f", AVG({col_name}) as mean_val FROM")
-        else:
-            stats_query = stats_query.replace("FROM", f", NULL as mean_val FROM")
 
         try:
             results = connector.execute_query(stats_query)
             if results:
                 res = results[0]
-                null_count = int(res["null_count"])
+                null_count = int(res["null_count"] or 0)
                 profile = ColumnProfile(
                     table_name=table_name,
                     column_name=col_name,

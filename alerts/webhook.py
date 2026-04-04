@@ -85,6 +85,7 @@ class WebhookDispatcher(AlertDispatcher):
         subject: str = None,
         alert_type: str = None,
         table_name: str = None,
+        **kwargs,
     ) -> bool:
         if not self._url:
             logger.warning("Webhook URL not configured — skipping webhook alert")

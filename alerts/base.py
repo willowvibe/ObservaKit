@@ -69,14 +69,14 @@ def dispatch_alert(alert_type: str, message: str, table_name: str = None, subjec
             # Pass extra config (like specific slack channel) to the dispatcher
             kwargs = {k: v for k, v in rule.items() if k not in ["match", "channel"]}
             dispatcher = get_alert_dispatcher(channel, **kwargs)
-            dispatcher.send(message, subject)
+            dispatcher.send(message, subject, alert_type=alert_type, table_name=table_name)
             dispatched = True
 
     if not dispatched:
         # Fallback to default channel from config
         default_channel = config.get("alerts", {}).get("default_channel", "slack")
         dispatcher = get_alert_dispatcher(default_channel)
-        dispatcher.send(message, subject)
+        dispatcher.send(message, subject, alert_type=alert_type, table_name=table_name)
 
 
 def get_lineage_impact(table_name: str) -> list[str]:

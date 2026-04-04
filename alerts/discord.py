@@ -49,7 +49,7 @@ class DiscordDispatcher(AlertDispatcher):
         self._webhook_url = os.getenv("DISCORD_WEBHOOK_URL", "")
         self._mention = os.getenv("DISCORD_MENTION", "")   # e.g. "@here" or "<@&ROLE_ID>"
 
-    def send(self, message: str, subject: str = None, alert_type: str = None) -> bool:
+    def send(self, message: str, subject: str = None, alert_type: str = None, **kwargs) -> bool:
         if not self._webhook_url:
             logger.warning("DISCORD_WEBHOOK_URL not configured — skipping Discord alert")
             return False

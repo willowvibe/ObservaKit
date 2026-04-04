@@ -148,16 +148,21 @@ def poll_freshness(db: Session = Depends(get_db), connector=None):
 
 def _parse_duration(duration_str: str) -> float:
     """Parse a duration string like '1h', '30m', '2h' into seconds."""
+    if not duration_str:
+        raise ValueError("duration_str must not be empty")
     duration_str = duration_str.strip().lower()
-    if duration_str.endswith("h"):
-        return float(duration_str[:-1]) * 3600
-    elif duration_str.endswith("m"):
-        return float(duration_str[:-1]) * 60
-    elif duration_str.endswith("s"):
-        return float(duration_str[:-1])
-    elif duration_str.endswith("d"):
-        return float(duration_str[:-1]) * 86400
-    return float(duration_str)
+    try:
+        if duration_str.endswith("h"):
+            return float(duration_str[:-1]) * 3600
+        elif duration_str.endswith("m"):
+            return float(duration_str[:-1]) * 60
+        elif duration_str.endswith("s"):
+            return float(duration_str[:-1])
+        elif duration_str.endswith("d"):
+            return float(duration_str[:-1]) * 86400
+        return float(duration_str)
+    except (ValueError, IndexError) as e:
+        raise ValueError(f"Invalid duration string '{duration_str}': {e}") from e
 
 
 def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db: Session):
@@ -185,9 +190,10 @@ def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db
         logger.info(f"Alert suppressed for {table} until {suppression.suppressed_until} — reason: {suppression.reason}")
         return
 
+    lag_str = f"{lag_seconds / 3600:.1f} hours" if lag_seconds is not None else "unknown (no data found)"
     message = (
         f"{'🔴' if status == 'fail' else '🟡'} Freshness Alert: {table}\n"
-        f"  Lag: {lag_seconds / 3600:.1f} hours\n"
+        f"  Lag: {lag_str}\n"
         f"  Status: {status.upper()}\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
     )
