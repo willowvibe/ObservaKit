@@ -15,7 +15,6 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [healthData, setHealthData] = useState([]);
   const [recentFailures, setRecentFailures] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // Mock data for initial design - will connect to backend API
   useEffect(() => {
@@ -38,7 +37,6 @@ const Dashboard = () => {
 
       setHealthData(mockHealth);
       setRecentFailures(mockFailures);
-      setLoading(false);
     };
 
     fetchData();

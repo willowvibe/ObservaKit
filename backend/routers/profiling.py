@@ -5,7 +5,6 @@ Executes column-level statistics and stores them for monitoring.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
