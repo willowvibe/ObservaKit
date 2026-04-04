@@ -111,3 +111,33 @@ lineage:
   - table: public.customers
     downstream:
       - reporting.customer_activity
+
+# ---- Cross-Table Consistency Checks ----
+consistency:
+  # Verifies every order_item links to a valid order (referential integrity)
+  - name: "Orders ↔ Order Items referential integrity"
+    check: row_count_match
+    table_a: public.order_items
+    table_b: public.orders
+    join_key: order_id
+    tolerance: 0           # zero orphans allowed
+    alert: slack
+
+  # Verifies revenue totals match accounting ledger within 1%
+  # - name: "Revenue reconciliation"
+  #   check: sum_match
+  #   table_a: public.orders
+  #   column_a: amount
+  #   table_b: accounting.ledger
+  #   column_b: credit_amount
+  #   tolerance_pct: 0.01  # within 1%
+  #   alert: slack
+
+# ---- dbt Integration ----
+dbt:
+  enabled: false               # set to true to enable dbt artifact parsing
+  project_dir: /path/to/dbt/project
+  profiles_dir: /path/to/.dbt
+  auto_parse_on_run: true      # poll for new run_results.json every 5 minutes
+  poll_interval_minutes: 5
+  expose_model_freshness: true # use dbt source freshness as ObservaKit freshness

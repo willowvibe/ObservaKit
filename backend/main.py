@@ -7,9 +7,12 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 
 from alembic.config import Config
 from fastapi import Depends, FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
@@ -106,6 +109,18 @@ app.include_router(profiling.router, prefix="/profiling", tags=["Column Profilin
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"], dependencies=[Depends(verify_api_key)])
 app.include_router(suppressions.router, prefix="/suppress", tags=["Suppressions"], dependencies=[Depends(verify_api_key)])
 
+# ---- Embedded React Dashboard ----
+_STATIC_DIR = Path(__file__).parent / "static"
+if _STATIC_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=str(_STATIC_DIR), html=True), name="ui")
+
+    @app.get("/ui/{full_path:path}", include_in_schema=False)
+    async def serve_ui(full_path: str):
+        """SPA fallback — serve index.html for any /ui/* path not matched by static files."""
+        index = _STATIC_DIR / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+        return {"detail": "Dashboard not built. Run: make ui-build"}
 
 @app.get("/", tags=["Health"])
 async def root():
@@ -124,8 +139,8 @@ async def root():
 async def get_status():
     """
     Single-call health summary across all observability pillars.
-    Returns stale table count, schema drifts, quality pass rate, volume anomalies,
-    and active suppressions. Suitable for badges, Slack digests, and embedded widgets.
+    Returns aggregate counts AND a per-table status grid.
+    Suitable for dashboard badges, Slack daily digests, and embedded widgets.
     """
     from datetime import timedelta
     from sqlalchemy import func as sqlfunc
@@ -139,39 +154,122 @@ async def get_status():
         now = datetime.now(timezone.utc)
         cutoff_24h = now - timedelta(hours=24)
 
-        # Freshness: count tables with status != ok in last 24h
-        stale_count = db.query(FreshnessRecord).filter(
-            FreshnessRecord.checked_at >= cutoff_24h,
-            FreshnessRecord.status != "ok"
-        ).count()
+        # ---- Collect most-recent record per table for each pillar ----
+        # Freshness: latest status per table
+        freshness_subq = (
+            db.query(
+                FreshnessRecord.table_name,
+                sqlfunc.max(FreshnessRecord.checked_at).label("latest")
+            )
+            .filter(FreshnessRecord.checked_at >= cutoff_24h)
+            .group_by(FreshnessRecord.table_name)
+            .subquery()
+        )
+        freshness_latest = db.query(FreshnessRecord).join(
+            freshness_subq,
+            (FreshnessRecord.table_name == freshness_subq.c.table_name) &
+            (FreshnessRecord.checked_at == freshness_subq.c.latest)
+        ).all()
 
-        # Volume: anomalies in last 24h
-        volume_anomalies = db.query(VolumeRecord).filter(
-            VolumeRecord.recorded_at >= cutoff_24h,
-            VolumeRecord.is_anomaly == True  # noqa: E712
-        ).count()
+        # Volume: latest anomaly status per table
+        volume_subq = (
+            db.query(
+                VolumeRecord.table_name,
+                sqlfunc.max(VolumeRecord.recorded_at).label("latest")
+            )
+            .filter(VolumeRecord.recorded_at >= cutoff_24h)
+            .group_by(VolumeRecord.table_name)
+            .subquery()
+        )
+        volume_latest = db.query(VolumeRecord).join(
+            volume_subq,
+            (VolumeRecord.table_name == volume_subq.c.table_name) &
+            (VolumeRecord.recorded_at == volume_subq.c.latest)
+        ).all()
 
-        # Quality: pass rate in last 24h
-        total_checks = db.query(CheckResult).filter(
-            CheckResult.executed_at >= cutoff_24h
-        ).count()
-        passed_checks = db.query(CheckResult).filter(
-            CheckResult.executed_at >= cutoff_24h,
-            CheckResult.passed == True  # noqa: E712
-        ).count()
-        quality_pass_rate = round((passed_checks / total_checks) * 100, 1) if total_checks > 0 else None
+        # Quality: pass/fail counts per table in last 24h
+        quality_rows = (
+            db.query(
+                CheckResult.table_name,
+                sqlfunc.count(CheckResult.id).label("total"),
+                sqlfunc.sum(CheckResult.passed.cast(sqlfunc.Integer())).label("passed"),
+                sqlfunc.max(CheckResult.executed_at).label("latest"),
+            )
+            .filter(CheckResult.executed_at >= cutoff_24h)
+            .group_by(CheckResult.table_name)
+            .all()
+        )
 
-        # Schema: drift events in last 24h
-        schema_drifts = db.query(SchemaDiff).filter(
-            SchemaDiff.detected_at >= cutoff_24h
-        ).count()
+        # Schema: any drift in last 24h per table
+        schema_rows = (
+            db.query(
+                SchemaDiff.table_name,
+                sqlfunc.count(SchemaDiff.id).label("drifts"),
+                sqlfunc.max(SchemaDiff.detected_at).label("latest"),
+            )
+            .filter(SchemaDiff.detected_at >= cutoff_24h)
+            .group_by(SchemaDiff.table_name)
+            .all()
+        )
+
+        # ---- Build per-table index ----
+        tables: dict = {}
+
+        for f in freshness_latest:
+            t = tables.setdefault(f.table_name, {"name": f.table_name, "freshness": "ok", "volume": "ok",
+                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            t["freshness"] = f.status  # ok | warn | fail
+            t["last_checked"] = f.checked_at.isoformat()
+
+        for v in volume_latest:
+            t = tables.setdefault(v.table_name, {"name": v.table_name, "freshness": "ok", "volume": "ok",
+                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            t["volume"] = "fail" if v.is_anomaly else "ok"
+            if not t["last_checked"] or v.recorded_at.isoformat() > t["last_checked"]:
+                t["last_checked"] = v.recorded_at.isoformat()
+
+        for q in quality_rows:
+            t = tables.setdefault(q.table_name, {"name": q.table_name, "freshness": "ok", "volume": "ok",
+                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            passed = int(q.passed or 0)
+            total = int(q.total or 0)
+            rate = (passed / total) if total > 0 else 1.0
+            t["quality"] = "ok" if rate == 1.0 else ("warn" if rate >= 0.8 else "fail")
+            t["quality_pass_rate"] = round(rate * 100, 1)
+            if not t["last_checked"] or q.latest.isoformat() > t["last_checked"]:
+                t["last_checked"] = q.latest.isoformat()
+
+        for s in schema_rows:
+            t = tables.setdefault(s.table_name, {"name": s.table_name, "freshness": "ok", "volume": "ok",
+                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            t["schema"] = "fail" if int(s.drifts) > 0 else "ok"
+            if not t["last_checked"] or s.latest.isoformat() > t["last_checked"]:
+                t["last_checked"] = s.latest.isoformat()
+
+        # ---- Summary counts ----
+        def _worst(row):
+            for pillar in ("freshness", "volume", "quality", "schema"):
+                if row.get(pillar) == "fail":
+                    return "fail"
+            for pillar in ("freshness", "volume", "quality", "schema"):
+                if row.get(pillar) == "warn":
+                    return "warn"
+            return "ok"
+
+        table_list = sorted(tables.values(), key=lambda x: x["name"])
+        statuses = [_worst(t) for t in table_list]
+        summary = {
+            "healthy": statuses.count("ok"),
+            "warn": statuses.count("warn"),
+            "fail": statuses.count("fail"),
+        }
 
         # Active suppressions
         active_suppressions = db.query(CheckSuppression).filter(
             CheckSuppression.suppressed_until >= now
         ).count()
 
-        # Last run timestamps per pillar
+        # Last run timestamps per pillar (global)
         last_freshness = db.query(sqlfunc.max(FreshnessRecord.checked_at)).scalar()
         last_volume = db.query(sqlfunc.max(VolumeRecord.recorded_at)).scalar()
         last_quality = db.query(sqlfunc.max(CheckResult.executed_at)).scalar()
@@ -180,30 +278,19 @@ async def get_status():
         return {
             "generated_at": now.isoformat(),
             "window_hours": 24,
-            "freshness": {
-                "stale_tables": stale_count,
-                "last_checked": last_freshness.isoformat() if last_freshness else None,
+            "summary": summary,
+            "tables": table_list,
+            "pillars": {
+                "freshness": {"last_checked": last_freshness.isoformat() if last_freshness else None},
+                "volume": {"last_checked": last_volume.isoformat() if last_volume else None},
+                "quality": {"last_checked": last_quality.isoformat() if last_quality else None},
+                "schema": {"last_detected": last_schema.isoformat() if last_schema else None},
             },
-            "volume": {
-                "anomalies": volume_anomalies,
-                "last_checked": last_volume.isoformat() if last_volume else None,
-            },
-            "quality": {
-                "total_checks": total_checks,
-                "passed_checks": passed_checks,
-                "pass_rate_pct": quality_pass_rate,
-                "last_checked": last_quality.isoformat() if last_quality else None,
-            },
-            "schema": {
-                "drift_events": schema_drifts,
-                "last_detected": last_schema.isoformat() if last_schema else None,
-            },
-            "suppressions": {
-                "active": active_suppressions,
-            },
+            "suppressions": {"active": active_suppressions},
         }
     finally:
         db.close()
+
 
 
 if __name__ == "__main__":

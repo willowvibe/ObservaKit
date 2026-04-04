@@ -27,6 +27,9 @@ Homepage = "https://github.com/willowvibe/ObservaKit"
 "Bug Tracker" = "https://github.com/willowvibe/ObservaKit/issues"
 "Website" = "https://www.willowvibe.com"
 
+[project.scripts]
+observakit = "cli.main:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
@@ -35,6 +38,9 @@ dev = [
 ]
 bigquery = ["google-cloud-bigquery>=3.20"]
 snowflake = ["snowflake-connector-python>=3.7"]
+soda-postgres = ["soda-core-postgres>=3.0"]
+soda-bigquery = ["soda-core-bigquery>=3.0"]
+soda-snowflake = ["soda-core-snowflake>=3.0"]
 
 [tool.ruff]
 line-length = 100

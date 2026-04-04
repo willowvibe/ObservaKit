@@ -99,26 +99,33 @@ cp .env.example .env
 # Edit .env with your warehouse credentials and Airflow URL
 ```
 
-### 3. Start the stack
+### 3. Start the stack (Lite Mode)
+We recommend starting with the "Lite" mode (Backend + Postgres DB + Embedded UI):
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.lite.yml up -d
 ```
+*(If you want the full metrics stack with Prometheus and Grafana, run `docker-compose up -d` instead.)*
 
 ### 4. Run the Demo Data Generator (Optional)
 To instantly see ObservaKit in action without hooking up your own database, generate 7 days of simulated history and inject data anomalies (like schema drift and volume drops):
 ```bash
 make demo
 ```
-*(Once run, the dashboards will immediately populate with simulated pipeline failures and data quality alerts).*
+*(Once run, the UI will immediately populate with simulated pipeline failures and data quality alerts).*
 
-### 5. Open Grafana
-Visit `http://localhost:3000` (default: `admin / admin`)
-Dashboards are auto-provisioned under the **Data Observability** folder.
+### 5. Open the Dashboard
+Visit `http://localhost:8000/ui` to see your data health grid, check results, and cross-table consistency alerts.
 
-### 5. Explore the API
+### 6. Explore the API & CLI
 Visit `http://localhost:8000/docs` for the interactive Swagger UI.
 
-### 6. Add your first quality checks
+You can also use our built-in CLI:
+```bash
+pip install -e .
+observakit status
+```
+
+### 7. Add your first quality checks
 ```bash
 cp checks/templates/soda/no_nulls_on_pk.yml checks/my_project/orders.yml
 # Edit the YAML to point to your table

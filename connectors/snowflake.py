@@ -142,3 +142,22 @@ class SnowflakeConnector(WarehouseConnector):
             return 0.0
         finally:
             self.close()
+
+    def get_soda_config(self) -> dict:
+        """Return configuration for Soda Core."""
+        return {
+            "data_source warehouse": {
+                "type": "snowflake",
+                "connection": {
+                    "username": self._config["user"],
+                    "password": self._config["password"],
+                    "account": self._config["account"],
+                    "database": self._config["database"],
+                    "warehouse": self._config["warehouse"],
+                }
+            }
+        }
+
+    def get_gx_config(self) -> dict:
+        """Return configuration for Great Expectations."""
+        return {}  # Placeholder for Snowflake GX config

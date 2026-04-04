@@ -33,14 +33,13 @@ def get_alert_dispatcher(channel: str, **kwargs) -> AlertDispatcher:
 def dispatch_alert(alert_type: str, message: str, table_name: str = None, subject: str = None):
     """
     Dispatch an alert using routing rules from kit.yml.
+    Uses load_config() so that ${VAR:-default} env vars are properly expanded.
     """
-    import yaml
     import re
-    import os
+    from config.loader import load_config
 
     try:
-        with open("config/kit.yml", "r") as f:
-            config = yaml.safe_load(f)
+        config = load_config("config/kit.yml")
     except Exception:
         config = {}
 
@@ -50,12 +49,12 @@ def dispatch_alert(alert_type: str, message: str, table_name: str = None, subjec
     for rule in routing_rules:
         match = rule.get("match", {})
         type_match = match.get("alert_type") == alert_type or match.get("alert_type") is None
-        
+
         table_match = True
         if table_name and match.get("table_pattern"):
             pattern = match.get("table_pattern").replace("*", ".*")
             table_match = bool(re.match(f"^{pattern}$", table_name))
-        
+
         if type_match and table_match:
             channel = rule.get("channel", "slack")
             # Pass extra config (like specific slack channel) to the dispatcher
@@ -72,11 +71,14 @@ def dispatch_alert(alert_type: str, message: str, table_name: str = None, subjec
 
 
 def get_lineage_impact(table_name: str) -> list[str]:
-    """Get downstream tables impacted by an issue in table_name."""
-    import yaml
+    """
+    Get downstream tables impacted by an issue in table_name.
+    Uses load_config() so env vars in kit.yml are expanded.
+    """
+    from config.loader import load_config
+
     try:
-        with open("config/kit.yml", "r") as f:
-            config = yaml.safe_load(f)
+        config = load_config("config/kit.yml")
     except Exception:
         return []
 

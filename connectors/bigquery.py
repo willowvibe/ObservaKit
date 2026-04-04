@@ -135,3 +135,20 @@ class BigQueryConnector(WarehouseConnector):
         except Exception as e:
             logger.error(f"BigQuery error getting compute costs: {e}")
             return 0.0
+
+    def get_soda_config(self) -> dict:
+        """Return configuration for Soda Core."""
+        return {
+            "data_source warehouse": {
+                "type": "bigquery",
+                "connection": {
+                    "project_id": self._project,
+                    "dataset": self._dataset,
+                    "account_info_json_path": self._credentials_path,
+                }
+            }
+        }
+
+    def get_gx_config(self) -> dict:
+        """Return configuration for Great Expectations."""
+        return {}  # Placeholder for BigQuery GX config

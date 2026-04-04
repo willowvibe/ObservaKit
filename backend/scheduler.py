@@ -102,6 +102,25 @@ def _run_finops_checks():
         logger.error(f"FinOps check failed: {e}")
 
 
+def _run_dbt_watcher():
+    """Poll dbt project's target/run_results.json and ingest if newer than last seen."""
+    try:
+        from backend.models import SessionLocal
+        from dbt_integration.watcher import poll_dbt_artifacts
+
+        db = SessionLocal()
+        try:
+            result = poll_dbt_artifacts(db=db)
+            if result["status"] == "error":
+                logger.error(f"dbt watcher error: {result.get('error')}")
+            elif result["status"] == "ok":
+                logger.info(f"dbt watcher: ingested {result.get('results_ingested', 0)} results")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"dbt watcher failed: {e}")
+
+
 def start_scheduler():
     """Start the APScheduler background scheduler."""
     global _scheduler
@@ -153,6 +172,23 @@ def start_scheduler():
         name="FinOps Check",
         replace_existing=True,
     )
+
+    # ---- Optional dbt artifact watcher ----
+    try:
+        from config.loader import load_config
+        dbt_cfg = load_config("config/kit.yml").get("dbt", {})
+        if dbt_cfg.get("enabled", False) and dbt_cfg.get("auto_parse_on_run", True):
+            dbt_poll_interval = int(dbt_cfg.get("poll_interval_minutes", 5))
+            _scheduler.add_job(
+                _run_dbt_watcher,
+                trigger=IntervalTrigger(minutes=dbt_poll_interval),
+                id="dbt_watcher",
+                name="dbt Artifact Watcher",
+                replace_existing=True,
+            )
+            logger.info("dbt artifact watcher enabled (polling every %dmin)", dbt_poll_interval)
+    except Exception as e:
+        logger.warning(f"Could not configure dbt watcher: {e}")
 
     _scheduler.start()
     logger.info(

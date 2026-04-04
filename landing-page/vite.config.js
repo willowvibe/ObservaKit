@@ -16,5 +16,24 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
-  base: '/ObservaKit/'
+  // When building for FastAPI serving: base = '/ui/'
+  // When deploying to GitHub Pages: base = '/ObservaKit/'
+  base: process.env.VITE_BUILD_SERVE === 'fastapi' ? '/ui/' : '/ObservaKit/',
+  build: {
+    // Output to backend/static so FastAPI can serve at /ui
+    outDir: process.env.VITE_BUILD_SERVE === 'fastapi'
+      ? '../backend/static'
+      : 'dist',
+    emptyOutDir: true,
+  },
+  server: {
+    // Proxy API calls to backend during local development
+    proxy: {
+      '/status':    { target: 'http://localhost:8000', changeOrigin: true },
+      '/checks':    { target: 'http://localhost:8000', changeOrigin: true },
+      '/suppress':  { target: 'http://localhost:8000', changeOrigin: true },
+      '/profiling': { target: 'http://localhost:8000', changeOrigin: true },
+      '/webhooks':  { target: 'http://localhost:8000', changeOrigin: true },
+    },
+  },
 })

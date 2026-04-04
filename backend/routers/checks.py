@@ -243,45 +243,90 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
         except Exception as e:
             logger.error(f"Error running custom SQL check {check_cfg.get('name')}: {e}")
 
+    # --- Run Cross-Table Consistency Checks ---
+    if not dry_run:
+        consistency_results = run_consistency_checks(connector, db)
+        all_results.extend(consistency_results)
+
     if not dry_run:
         db.commit()
     return {"engine": engine_name, "checks_run": len(all_results), "results": all_results, "dry_run": dry_run}
 
 
 def _run_soda_check(check_file: str, connector) -> list[dict]:
-    """Execute Soda Core checks."""
-    try:
-        from soda.scan import Scan
-    except ImportError:
-        logger.error("soda-core not installed")
-        return [{"check_error": "soda-core not installed", "passed": False, "table_name": "unknown", "check_name": "soda_init"}]
-
-    scan = Scan()
-    scan.set_data_source_name("my_postgres")
-    
-    # Add configuration from connector
-    soda_config_dict = connector.get_soda_config()
+    """
+    Execute Soda Core checks via subprocess using Soda's stable JSON output.
+    The Python API (scan.get_checks_fail()) accesses private attributes that
+    change between Soda versions. The subprocess approach uses the public CLI contract.
+    """
+    import json
+    import os
+    import subprocess
+    import tempfile
     import yaml
-    scan.add_configuration_yaml_str(yaml.dump(soda_config_dict))
-    
-    scan.add_sodacl_yaml_file(check_file)
-    scan.execute()
-    
+
+    soda_config = connector.get_soda_config()
+
+    # Write a temp datasource config file for this run
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as cfg_file:
+        yaml.dump(soda_config, cfg_file)
+        cfg_path = cfg_file.name
+
+    try:
+        result = subprocess.run(
+            ["soda", "scan", "-d", "my_postgres", "-c", cfg_path, check_file, "--json-output"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+
+        # Parse JSON output from stdout
+        return _parse_soda_json_output(result.stdout, result.returncode, check_file)
+
+    except FileNotFoundError:
+        logger.error("'soda' CLI not found. Install soda-core-postgres with: pip install soda-core-postgres")
+        return [{"check_name": "soda_init", "table_name": "unknown", "passed": False,
+                 "details": "soda CLI not found — install soda-core-postgres"}]
+    except subprocess.TimeoutExpired:
+        logger.error(f"Soda scan timed out for {check_file}")
+        return [{"check_name": "soda_timeout", "table_name": "unknown", "passed": False,
+                 "details": f"Scan timed out after 300s: {check_file}"}]
+    finally:
+        os.unlink(cfg_path)
+
+
+def _parse_soda_json_output(stdout: str, returncode: int, check_file: str) -> list[dict]:
+    """Parse Soda's --json-output into ObservaKit check result dicts."""
+    import json
+
     results = []
-    for check in scan.get_checks_fail():
-        results.append({
-            "check_name": check.name,
-            "table_name": check.table_name if hasattr(check, 'table_name') else "unknown",
-            "passed": False,
-            "details": check.get_cloud_dict().get("diagnostic_messaging")
-        })
-    for check in scan.get_checks_pass():
-        results.append({
-            "check_name": check.name,
-            "table_name": check.table_name if hasattr(check, 'table_name') else "unknown",
-            "passed": True,
-            "details": "Check passed"
-        })
+    try:
+        # Soda prints one JSON object per line in some versions, or a single array
+        lines = [l.strip() for l in stdout.splitlines() if l.strip().startswith("{") or l.strip().startswith("[")]
+        if not lines:
+            # No JSON output — treat as failed scan
+            logger.warning(f"No JSON output from soda scan of {check_file} (rc={returncode})")
+            return [{"check_name": "soda_scan", "table_name": "unknown",
+                     "passed": returncode == 0, "details": "No structured output from soda"}]
+
+        raw = json.loads("\n".join(lines)) if len(lines) == 1 else json.loads(lines[0])
+
+        # Soda JSON schema: {"checks": [{"name": ..., "outcome": "pass"|"fail", "table": ...}]}
+        checks = raw.get("checks", []) if isinstance(raw, dict) else raw
+        for check in checks:
+            outcome = check.get("outcome", "fail").lower()
+            results.append({
+                "check_name": check.get("name", "unnamed"),
+                "table_name": check.get("table", "unknown"),
+                "passed": outcome == "pass",
+                "metric_value": check.get("measured_value"),
+                "details": check.get("definition", ""),
+            })
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"Could not parse Soda JSON output: {e} — treating as {'pass' if returncode == 0 else 'fail'}")
+        results.append({"check_name": "soda_scan", "table_name": "unknown",
+                        "passed": returncode == 0, "details": stdout[:500]})
+
     return results
 
 
@@ -447,3 +492,103 @@ def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, 
         success=success,
     )
     db.add(alert_log)
+
+
+def run_consistency_checks(connector, db: Session) -> list[dict]:
+    """
+    Execute cross-table consistency checks defined in kit.yml under 'consistency:'.
+    Supports two check types:
+      - row_count_match: verifies row counts of two tables match within tolerance
+      - sum_match: verifies a column sum matches across two tables within tolerance_pct
+
+    Returns a list of result dicts, each with check_name, passed, and details.
+    """
+    try:
+        config = load_config("config/kit.yml")
+    except FileNotFoundError:
+        return []
+
+    consistency_checks = config.get("consistency", [])
+    if not consistency_checks:
+        return []
+
+    results = []
+    for check_cfg in consistency_checks:
+        name = check_cfg.get("name", "unnamed_consistency_check")
+        check_type = check_cfg.get("check", "row_count_match")
+
+        try:
+            if check_type == "row_count_match":
+                table_a = check_cfg["table_a"]
+                table_b = check_cfg["table_b"]
+                join_key = check_cfg.get("join_key")
+                tolerance = int(check_cfg.get("tolerance", 0))
+
+                if join_key:
+                    # Count rows in A not in B
+                    q = f"""
+                        SELECT COUNT(*) as cnt FROM {table_a} a
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM {table_b} b WHERE b.{join_key} = a.{join_key}
+                        )
+                    """
+                    rows = connector.execute_query(q)
+                    unmatched = int(rows[0]["cnt"]) if rows else 0
+                    passed = unmatched <= tolerance
+                    details = f"Unmatched rows: {unmatched} (tolerance: {tolerance})"
+                else:
+                    count_a_rows = connector.execute_query(f"SELECT COUNT(*) as cnt FROM {table_a}")
+                    count_b_rows = connector.execute_query(f"SELECT COUNT(*) as cnt FROM {table_b}")
+                    count_a = int(count_a_rows[0]["cnt"]) if count_a_rows else 0
+                    count_b = int(count_b_rows[0]["cnt"]) if count_b_rows else 0
+                    diff = abs(count_a - count_b)
+                    passed = diff <= tolerance
+                    details = f"{table_a}={count_a:,} rows, {table_b}={count_b:,} rows, diff={diff:,} (tolerance: {tolerance})"
+
+            elif check_type == "sum_match":
+                table_a = check_cfg["table_a"]
+                table_b = check_cfg["table_b"]
+                col_a = check_cfg["column_a"]
+                col_b = check_cfg["column_b"]
+                tolerance_pct = float(check_cfg.get("tolerance_pct", 0.0))
+
+                sum_a_rows = connector.execute_query(f"SELECT COALESCE(SUM({col_a}), 0) as total FROM {table_a}")
+                sum_b_rows = connector.execute_query(f"SELECT COALESCE(SUM({col_b}), 0) as total FROM {table_b}")
+                sum_a = float(sum_a_rows[0]["total"]) if sum_a_rows else 0.0
+                sum_b = float(sum_b_rows[0]["total"]) if sum_b_rows else 0.0
+                max_val = max(abs(sum_a), abs(sum_b), 1.0)
+                actual_pct = abs(sum_a - sum_b) / max_val
+                passed = actual_pct <= tolerance_pct
+                details = (
+                    f"{table_a}.{col_a}={sum_a:,.2f}, {table_b}.{col_b}={sum_b:,.2f}, "
+                    f"drift={actual_pct * 100:.3f}% (tolerance: {tolerance_pct * 100:.2f}%)"
+                )
+
+            else:
+                logger.warning(f"Unknown consistency check type: {check_type}")
+                continue
+
+            record = CheckResult(
+                check_name=name,
+                table_name=check_cfg.get("table_a", "cross-table"),
+                check_type="consistency",
+                passed=passed,
+                details=details,
+                executed_at=datetime.now(timezone.utc),
+            )
+            db.add(record)
+            results.append({"check_name": name, "check_type": check_type, "passed": passed, "details": details})
+
+            if not passed:
+                dispatch_alert(
+                    alert_type="quality",
+                    table_name=check_cfg.get("table_a"),
+                    subject=f"❌ Consistency Check Failed: {name}",
+                    message=f"Consistency check failed: {name}\n{details}",
+                )
+
+        except Exception as e:
+            logger.error(f"Consistency check '{name}' failed: {e}")
+            results.append({"check_name": name, "passed": False, "details": str(e)})
+
+    return results

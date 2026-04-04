@@ -10,7 +10,7 @@ from backend.main import app
 def client():
     return TestClient(app)
 
-@patch("backend.routers.finops.get_warehouse_connector")
+@patch("connectors.base.get_warehouse_connector")
 def test_finops_poll(mock_get_connector, client):
     # Mock the warehouse connector and its get_compute_costs method
     mock_connector = mock_get_connector.return_value
@@ -29,7 +29,7 @@ def test_finops_poll(mock_get_connector, client):
         # Verify the connector method was called with correct days
         mock_connector.get_compute_costs.assert_called_once_with(days=7)
 
-@patch("backend.routers.finops.get_warehouse_connector")
+@patch("connectors.base.get_warehouse_connector")
 def test_finops_poll_postgres_skip(mock_get_connector, client):
     # If the warehouse is postgres, it should skip tracking
     with patch.dict("os.environ", {"WAREHOUSE_TYPE": "postgres", "OBSERVAKIT_API_KEY": "observakit123"}):

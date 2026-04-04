@@ -1,0 +1,73 @@
+# =============================================================================
+# ObservaKit — Lite Docker Compose
+# Minimal stack: backend + postgres only.
+# No Prometheus, Grafana, or OTel required.
+#
+# Usage:
+#   docker compose -f docker-compose.lite.yml up -d
+#   open http://localhost:8000/ui
+# =============================================================================
+
+services:
+  # ---- ObservaKit Backend (FastAPI + Embedded UI) ----
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: observakit-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - METADATA_DB_HOST=postgres
+      - METADATA_DB_PORT=5432
+      - METADATA_DB_USER=${METADATA_DB_USER:-observakit}
+      - METADATA_DB_PASSWORD=${METADATA_DB_PASSWORD:-changeme}
+      - METADATA_DB_NAME=${METADATA_DB_NAME:-observakit}
+      - WAREHOUSE_TYPE=${WAREHOUSE_TYPE:-postgres}
+      - WAREHOUSE_HOST=${WAREHOUSE_HOST:-host.docker.internal}
+      - WAREHOUSE_PORT=${WAREHOUSE_PORT:-5432}
+      - WAREHOUSE_USER=${WAREHOUSE_USER:-}
+      - WAREHOUSE_PASSWORD=${WAREHOUSE_PASSWORD:-}
+      - WAREHOUSE_DB=${WAREHOUSE_DB:-}
+      - WAREHOUSE_SCHEMA=${WAREHOUSE_SCHEMA:-public}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - SLACK_CHANNEL=${SLACK_CHANNEL:-#data-alerts}
+      - OBSERVAKIT_API_KEY=${OBSERVAKIT_API_KEY:-observakit123}
+      - FRESHNESS_CHECK_INTERVAL=${FRESHNESS_CHECK_INTERVAL:-15}
+      - VOLUME_CHECK_INTERVAL=${VOLUME_CHECK_INTERVAL:-60}
+      - SCHEMA_CHECK_INTERVAL=${SCHEMA_CHECK_INTERVAL:-360}
+      - QUALITY_CHECK_INTERVAL=${QUALITY_CHECK_INTERVAL:-60}
+    volumes:
+      - ./config:/app/config:ro
+      - ./checks:/app/checks:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---- Metadata Store (PostgreSQL) ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: observakit-postgres
+    environment:
+      POSTGRES_USER: ${METADATA_DB_USER:-observakit}
+      POSTGRES_PASSWORD: ${METADATA_DB_PASSWORD:-changeme}
+      POSTGRES_DB: ${METADATA_DB_NAME:-observakit}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_lite_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${METADATA_DB_USER:-observakit}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_lite_data:

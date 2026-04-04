@@ -42,6 +42,13 @@ clean: ## Remove build artifacts and caches
 dev: ## Run backend in dev mode
 	PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
 
+ui-build: ## Build React dashboard into backend/static (served at /ui)
+	cd landing-page && VITE_BUILD_SERVE=fastapi npm run build
+	@echo "✅ Dashboard built. Start the backend with 'make dev' to access at http://localhost:8000/ui"
+
+ui-dev: ## Run React dashboard dev server with API proxy to localhost:8000
+	cd landing-page && npm run dev
+
 demo: ## Seed the database with mock data and run a demo
 	PYTHONPATH=. python3 scripts/generate_mock_data.py
 	@echo "✅ Mock data loaded. Run 'make dev' to start the server."

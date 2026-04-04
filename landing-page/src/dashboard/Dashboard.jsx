@@ -1,194 +1,425 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Activity, 
-  CheckCircle, 
-  AlertTriangle, 
-  Database, 
-  Clock, 
-  TrendingUp, 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Activity,
+  CheckCircle,
+  AlertTriangle,
+  Database,
+  Clock,
+  TrendingUp,
   ShieldCheck,
   Search,
-  ExternalLink
+  RefreshCw,
+  BellOff,
+  Play,
+  XCircle
 } from 'lucide-react';
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_KEY = import.meta.env.VITE_API_KEY || '';
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(API_KEY ? { 'X-API-Key': API_KEY } : {}) },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Shared components
+// ---------------------------------------------------------------------------
+const StatusBadge = ({ status }) => {
+  const map = {
+    ok:   'badge-ok',
+    warn: 'badge-warn',
+    fail: 'badge-fail',
+  };
+  return (
+    <span className={`status-badge ${map[status] || 'badge-ok'}`}>
+      {status === 'ok' ? '✅' : status === 'warn' ? '⚠️' : '❌'} {status.toUpperCase()}
+    </span>
+  );
+};
+
+const Spinner = () => <span className="spinner" />;
+
+// ---------------------------------------------------------------------------
+// Screens
+// ---------------------------------------------------------------------------
+
+/** Overview — live /status table grid */
+function OverviewScreen() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await apiFetch('/status');
+      setData(d);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <div className="screen-center"><Spinner /></div>;
+  if (error)   return <div className="screen-error">⚠️ {error}</div>;
+
+  const { summary = {}, tables = [], generated_at } = data;
+
+  return (
+    <div className="screen">
+      <div className="screen-header">
+        <h2>Overview</h2>
+        <button className="btn-icon" onClick={load} title="Refresh"><RefreshCw size={16} /></button>
+      </div>
+
+      {/* Summary tiles */}
+      <div className="stat-row">
+        {[
+          { label: 'Healthy',  value: summary.healthy ?? '—', color: 'green',  icon: <CheckCircle size={20} /> },
+          { label: 'Warning',  value: summary.warn    ?? '—', color: 'yellow', icon: <AlertTriangle size={20} /> },
+          { label: 'Failing',  value: summary.fail    ?? '—', color: 'red',    icon: <XCircle size={20} /> },
+          { label: 'Tables',   value: tables.length,          color: 'blue',   icon: <Database size={20} /> },
+        ].map(({ label, value, color, icon }) => (
+          <div className={`stat-card stat-${color}`} key={label}>
+            <div className="stat-icon">{icon}</div>
+            <div className="stat-info">
+              <span className="stat-label">{label}</span>
+              <span className="stat-value">{value}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Per-table grid */}
+      <div className="card">
+        <div className="card-header">
+          <h3>Table Health Grid</h3>
+          <span className="text-muted text-sm">Last updated: {generated_at ? new Date(generated_at).toLocaleTimeString() : '—'}</span>
+        </div>
+        {tables.length === 0 ? (
+          <p className="empty-state">No monitored tables found in the last 24 hours. Start a check run to populate this view.</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Table</th>
+                  <th>Freshness</th>
+                  <th>Volume</th>
+                  <th>Quality</th>
+                  <th>Schema</th>
+                  <th>Last Checked</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tables.map((t) => (
+                  <tr key={t.name}>
+                    <td className="font-mono">{t.name}</td>
+                    <td><StatusBadge status={t.freshness} /></td>
+                    <td><StatusBadge status={t.volume} /></td>
+                    <td><StatusBadge status={t.quality} /></td>
+                    <td><StatusBadge status={t.schema} /></td>
+                    <td className="text-muted text-sm">{t.last_checked ? new Date(t.last_checked).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Checks screen — run checks and see results */
+function ChecksScreen() {
+  const [results, setResults] = useState([]);
+  const [running, setRunning] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadResults = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await apiFetch('/checks/results?limit=50');
+      setResults(d.results || d || []);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadResults(); }, [loadResults]);
+
+  const runChecks = async () => {
+    setRunning(true);
+    try {
+      await apiFetch('/checks/run', { method: 'POST' });
+      await loadResults();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const failed = results.filter(r => !r.passed);
+  const passed = results.filter(r => r.passed);
+
+  return (
+    <div className="screen">
+      <div className="screen-header">
+        <h2>Quality Checks</h2>
+        <button className="btn-primary" onClick={runChecks} disabled={running}>
+          {running ? <><Spinner /> Running…</> : <><Play size={14} /> Run Now</>}
+        </button>
+      </div>
+
+      {error && <div className="screen-error">⚠️ {error}</div>}
+
+      <div className="stat-row">
+        <div className="stat-card stat-green">
+          <div className="stat-icon"><CheckCircle size={20} /></div>
+          <div className="stat-info"><span className="stat-label">Passed</span><span className="stat-value">{passed.length}</span></div>
+        </div>
+        <div className="stat-card stat-red">
+          <div className="stat-icon"><XCircle size={20} /></div>
+          <div className="stat-info"><span className="stat-label">Failed</span><span className="stat-value">{failed.length}</span></div>
+        </div>
+      </div>
+
+      {loading ? <div className="screen-center"><Spinner /></div> : (
+        <div className="card">
+          <div className="card-header"><h3>Recent Results</h3></div>
+          {results.length === 0 ? (
+            <p className="empty-state">No check results yet. Click "Run Now" to execute your checks.</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead><tr><th>Check</th><th>Table</th><th>Type</th><th>Result</th><th>Details</th><th>Run At</th></tr></thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={i}>
+                      <td className="font-mono">{r.check_name}</td>
+                      <td className="font-mono text-sm">{r.table_name}</td>
+                      <td><span className="tag">{r.check_type}</span></td>
+                      <td><StatusBadge status={r.passed ? 'ok' : 'fail'} /></td>
+                      <td className="text-muted text-sm">{r.details || '—'}</td>
+                      <td className="text-muted text-sm">{r.executed_at ? new Date(r.executed_at).toLocaleString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Alerts screen — alert log + suppression controls */
+function AlertsScreen() {
+  const [alerts, setAlerts] = useState([]);
+  const [suppressions, setSuppressions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [suppTable, setSuppTable] = useState('');
+  const [suppMins, setSuppMins] = useState(60);
+  const [suppReason, setSuppReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [al, sl] = await Promise.all([
+        apiFetch('/webhooks/airflow').catch(() => ({ logs: [] })),
+        apiFetch('/suppress/'),
+      ]);
+      setAlerts(al.logs || []);
+      setSuppressions(sl || []);
+    } catch (_) {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const createSuppression = async () => {
+    if (!suppTable.trim()) return;
+    setSubmitting(true);
+    try {
+      await apiFetch('/suppress/', { method: 'POST', body: JSON.stringify({ table_name: suppTable, duration_minutes: suppMins, reason: suppReason }) });
+      setSuppTable(''); setSuppReason(''); setSuppMins(60);
+      await load();
+    } catch (e) { alert(`Failed: ${e.message}`); }
+    setSubmitting(false);
+  };
+
+  const deleteSuppression = async (id) => {
+    await apiFetch(`/suppress/${id}`, { method: 'DELETE' }).catch(() => {});
+    await load();
+  };
+
+  return (
+    <div className="screen">
+      <div className="screen-header">
+        <h2>Alerts & Suppressions</h2>
+        <button className="btn-icon" onClick={load} title="Refresh"><RefreshCw size={16} /></button>
+      </div>
+
+      {loading ? <div className="screen-center"><Spinner /></div> : (<>
+        {/* Suppression controls */}
+        <div className="card">
+          <div className="card-header"><h3><BellOff size={16} style={{marginRight:6}} />Suppress Alerts</h3></div>
+          <div className="suppress-form">
+            <input placeholder="Table (e.g. public.orders)" value={suppTable} onChange={e => setSuppTable(e.target.value)} />
+            <input type="number" placeholder="Minutes" value={suppMins} min={1} onChange={e => setSuppMins(Number(e.target.value))} style={{width:90}} />
+            <input placeholder="Reason (optional)" value={suppReason} onChange={e => setSuppReason(e.target.value)} />
+            <button className="btn-primary" onClick={createSuppression} disabled={submitting}>
+              {submitting ? <Spinner /> : 'Suppress'}
+            </button>
+          </div>
+
+          {suppressions.length > 0 && (
+            <div className="table-responsive" style={{marginTop:16}}>
+              <table className="data-table">
+                <thead><tr><th>Table</th><th>Until</th><th>Reason</th><th></th></tr></thead>
+                <tbody>
+                  {suppressions.map(s => (
+                    <tr key={s.id}>
+                      <td className="font-mono">{s.table_name}</td>
+                      <td className="text-sm">{new Date(s.suppressed_until).toLocaleString()}</td>
+                      <td className="text-muted text-sm">{s.reason || '—'}</td>
+                      <td><button className="btn-danger-sm" onClick={() => deleteSuppression(s.id)}>Remove</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+/** Profiling screen */
+function ProfilingScreen() {
+  const [table, setTable] = useState('');
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [ran, setRan] = useState(false);
+
+  const run = async () => {
+    if (!table.trim()) return;
+    setLoading(true);
+    try {
+      const d = await apiFetch(`/profiling/run?table_name=${encodeURIComponent(table)}`, { method: 'POST' });
+      setProfiles(d.profiles || []);
+      setRan(true);
+    } catch (e) { alert(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="screen">
+      <div className="screen-header"><h2>Column Profiling</h2></div>
+      <div className="card">
+        <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
+          <input placeholder="Table (e.g. public.orders)" value={table} onChange={e => setTable(e.target.value)} style={{flex:1}} />
+          <button className="btn-primary" onClick={run} disabled={loading || !table}>
+            {loading ? <Spinner /> : <><TrendingUp size={14} /> Profile</>}
+          </button>
+        </div>
+        {ran && profiles.length === 0 && <p className="empty-state">No columns returned.</p>}
+        {profiles.length > 0 && (
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead><tr><th>Column</th><th>Null %</th><th>Distinct</th><th>Min</th><th>Max</th></tr></thead>
+              <tbody>
+                {profiles.map((p, i) => (
+                  <tr key={i}>
+                    <td className="font-mono">{p.column}</td>
+                    <td className={p.null_pct > 10 ? 'text-red' : ''}>{p.null_pct?.toFixed(1)}%</td>
+                    <td>{p.distinct_count?.toLocaleString()}</td>
+                    <td className="text-muted text-sm">{p.min_value ?? '—'}</td>
+                    <td className="text-muted text-sm">{p.max_value ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Dashboard shell
+// ---------------------------------------------------------------------------
+const TABS = [
+  { id: 'overview',  label: 'Overview',          icon: <Activity size={16} /> },
+  { id: 'checks',    label: 'Quality Checks',     icon: <ShieldCheck size={16} /> },
+  { id: 'alerts',    label: 'Alerts',             icon: <AlertTriangle size={16} /> },
+  { id: 'profiling', label: 'Column Profiling',   icon: <TrendingUp size={16} /> },
+];
+
+const SCREENS = {
+  overview:  <OverviewScreen />,
+  checks:    <ChecksScreen />,
+  alerts:    <AlertsScreen />,
+  profiling: <ProfilingScreen />,
+};
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [healthData, setHealthData] = useState([]);
-  const [recentFailures, setRecentFailures] = useState([]);
+  const [backendOk, setBackendOk] = useState(null);
 
-  // Mock data for initial design - will connect to backend API
   useEffect(() => {
-    const fetchData = async () => {
-      // In a real app, this would be:
-      // const resp = await fetch('http://localhost:8000/checks/results');
-      // const data = await resp.json();
-      
-      const mockHealth = [
-        { table: 'public.orders', freshness: 'ok', volume: 'ok', quality: 'fail', last_checked: '10m ago' },
-        { table: 'public.order_items', freshness: 'ok', volume: 'ok', quality: 'ok', last_checked: '12m ago' },
-        { table: 'reporting.daily_revenue', freshness: 'warn', volume: 'ok', quality: 'ok', last_checked: '1h ago' },
-        { table: 'public.customers', freshness: 'ok', volume: 'anomaly', quality: 'ok', last_checked: '5m ago' },
-      ];
-      
-      const mockFailures = [
-        { id: 1, table: 'public.orders', check: 'not_null(order_id)', time: '10m ago', severity: 'high' },
-        { id: 2, table: 'public.customers', check: 'volume_anomaly', time: '5m ago', severity: 'medium' },
-      ];
-
-      setHealthData(mockHealth);
-      setRecentFailures(mockFailures);
-    };
-
-    fetchData();
+    apiFetch('/').then(() => setBackendOk(true)).catch(() => setBackendOk(false));
   }, []);
-
-  const StatusBadge = ({ status }) => {
-    const colors = {
-      ok: 'bg-green-500/20 text-green-400 border-green-500/30',
-      warn: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      fail: 'bg-red-500/20 text-red-400 border-red-500/30',
-      anomaly: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    };
-    return (
-      <span className={`px-2 py-0.5 rounded-full text-xs border ${colors[status] || colors.ok}`}>
-        {status.toUpperCase()}
-      </span>
-    );
-  };
 
   return (
     <div className="dashboard-container">
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo-spark">🔭</div>
-          <h2>ObservaKit v{__APP_VERSION__}</h2>
+          <h2>ObservaKit</h2>
+          <div className={`backend-dot ${backendOk === true ? 'dot-ok' : backendOk === false ? 'dot-fail' : 'dot-loading'}`} />
         </div>
         <nav className="sidebar-nav">
-          <button 
-            className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            <Activity size={18} /> Overview
-          </button>
-          <button 
-            className={`nav-item ${activeTab === 'quality' ? 'active' : ''}`}
-            onClick={() => setActiveTab('quality')}
-          >
-            <ShieldCheck size={18} /> Quality Checks
-          </button>
-          <button 
-            className={`nav-item ${activeTab === 'schema' ? 'active' : ''}`}
-            onClick={() => setActiveTab('schema')}
-          >
-            <Database size={18} /> Schema History
-          </button>
-          <button 
-            className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('alerts')}
-          >
-            <AlertTriangle size={18} /> Alert Log
-          </button>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
         </nav>
+        <div className="sidebar-footer">
+          <a href="/docs" target="_blank" rel="noreferrer" className="nav-link-sm">API Docs ↗</a>
+          <a href="https://github.com/willowvibe/ObservaKit" target="_blank" rel="noreferrer" className="nav-link-sm">GitHub ↗</a>
+        </div>
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-search">
-            <Search size={18} className="text-muted" />
-            <input type="text" placeholder="Search tables, checks..." />
-          </div>
-          <div className="header-actions">
-            <div className="status-indicator">
-              <span className="dot pulse"></span> Backend: Online
-            </div>
-          </div>
-        </header>
-
-        <section className="dashboard-content">
-          <div className="stats-row">
-            <div className="stat-card">
-              <div className="stat-icon bg-green-soft"><CheckCircle size={20} /></div>
-              <div className="stat-info">
-                <span className="stat-label">Passed Checks</span>
-                <span className="stat-value">142</span>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon bg-red-soft"><AlertTriangle size={20} /></div>
-              <div className="stat-info">
-                <span className="stat-label">Active Alerts</span>
-                <span className="stat-value">3</span>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon bg-blue-soft"><Clock size={20} /></div>
-              <div className="stat-info">
-                <span className="stat-label">Avg Freshness</span>
-                <span className="stat-value">12m</span>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon bg-purple-soft"><TrendingUp size={20} /></div>
-              <div className="stat-info">
-                <span className="stat-label">Profiled Columns</span>
-                <span className="stat-value">84</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid-main">
-            <div className="card table-health">
-              <div className="card-header">
-                <h3>Table Health Overview</h3>
-                <button className="btn-text">View All</button>
-              </div>
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Table Name</th>
-                      <th>Freshness</th>
-                      <th>Volume</th>
-                      <th>Quality</th>
-                      <th>Last Sync</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {healthData.map((row, i) => (
-                      <tr key={i}>
-                        <td className="font-mono">{row.table}</td>
-                        <td><StatusBadge status={row.freshness} /></td>
-                        <td><StatusBadge status={row.volume} /></td>
-                        <td><StatusBadge status={row.quality} /></td>
-                        <td className="text-muted text-sm">{row.last_checked}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="card recent-failures">
-              <div className="card-header">
-                <h3>Recent Failures</h3>
-              </div>
-              <div className="failure-list">
-                {recentFailures.map(fail => (
-                  <div className="failure-item" key={fail.id}>
-                    <div className="fail-icon">❌</div>
-                    <div className="fail-info">
-                      <div className="fail-title">{fail.check}</div>
-                      <div className="fail-meta">{fail.table} • {fail.time}</div>
-                    </div>
-                    <button className="btn-icon">
-                      <ExternalLink size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        {SCREENS[activeTab]}
       </main>
     </div>
   );
