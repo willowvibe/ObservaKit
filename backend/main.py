@@ -18,7 +18,7 @@ from prometheus_client import make_asgi_app
 
 from alembic import command
 from backend.auth import verify_api_key
-from backend.routers import checks, finops, freshness, profiling, schema_diff, suppressions, webhooks
+from backend.routers import checks, contracts, distribution, finops, freshness, profiling, schema_diff, suppressions, webhooks
 from backend.scheduler import shutdown_scheduler, start_scheduler
 
 logger = logging.getLogger(__name__)
@@ -108,6 +108,18 @@ app.include_router(
 app.include_router(profiling.router, prefix="/profiling", tags=["Column Profiling"], dependencies=[Depends(verify_api_key)])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"], dependencies=[Depends(verify_api_key)])
 app.include_router(suppressions.router, prefix="/suppress", tags=["Suppressions"], dependencies=[Depends(verify_api_key)])
+app.include_router(
+    distribution.router,
+    prefix="/distribution",
+    tags=["Distribution Drift"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    contracts.router,
+    prefix="/contracts",
+    tags=["Data Contracts"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 # ---- Embedded React Dashboard ----
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -133,6 +145,52 @@ async def root():
         "website": "https://www.willowvibe.com",
         "source": "https://github.com/willowvibe/ObservaKit",
     }
+
+
+@app.get("/healthz", tags=["Health"], include_in_schema=True)
+async def healthz():
+    """
+    Kubernetes / Docker liveness & readiness probe endpoint.
+
+    Returns HTTP 200 when the service is up and the metadata database is reachable.
+    Returns HTTP 503 if the database is unreachable so that Kubernetes can restart
+    the pod or remove it from the load-balancer.
+
+    Usage in Kubernetes:
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 8000
+        initialDelaySeconds: 15
+        periodSeconds: 20
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: 8000
+        initialDelaySeconds: 5
+        periodSeconds: 10
+    """
+    from fastapi.responses import JSONResponse
+    from backend.models import SessionLocal
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception as e:
+        logger.error(f"/healthz — DB check failed: {e}")
+        db_ok = False
+    finally:
+        db.close()
+
+    payload = {
+        "status": "ok" if db_ok else "degraded",
+        "database": "ok" if db_ok else "unreachable",
+        "version": "0.1.7",
+    }
+    status_code = 200 if db_ok else 503
+    return JSONResponse(content=payload, status_code=status_code)
 
 
 @app.get("/status", tags=["Health"])

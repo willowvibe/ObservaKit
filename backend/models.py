@@ -181,3 +181,50 @@ class PipelineRun(Base):
     end_time = Column(DateTime, nullable=True)
     duration_seconds = Column(Float, nullable=True)
     recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class DistributionSnapshot(Base):
+    """Stores column value distribution snapshots for drift detection."""
+
+    __tablename__ = "distribution_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    column_name = Column(String(255), nullable=False, index=True)
+    column_type = Column(String(50), nullable=False)  # categorical | numeric
+    # JSON blob: {"total_rows": N, "null_pct": 0.02, "top_values": [...]} or histogram dict
+    distribution = Column(JSON, nullable=False)
+    snapshotted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class DistributionDrift(Base):
+    """Records detected distribution drift events."""
+
+    __tablename__ = "distribution_drifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    column_name = Column(String(255), nullable=False)
+    # null_pct_change | value_share_shift | mean_shift
+    drift_type = Column(String(100), nullable=False)
+    previous_value = Column(Text, nullable=True)   # Human-readable description of old state
+    current_value = Column(Text, nullable=True)    # Human-readable description of new state
+    change_magnitude = Column(Float, nullable=True)  # Fraction (0-1); multiply by 100 for %
+    detected_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class ContractValidationResult(Base):
+    """Stores the outcome of each data contract validation run."""
+
+    __tablename__ = "contract_validation_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    contract_id = Column(String(255), nullable=False, index=True)
+    contract_version = Column(String(50), nullable=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    passed = Column(Boolean, nullable=False)
+    total_rules = Column(Integer, nullable=False, default=0)
+    passed_rules = Column(Integer, nullable=False, default=0)
+    # Full list of violation dicts: [{"rule": "...", "passed": false, "detail": "..."}]
+    violations_json = Column(JSON, nullable=True)
+    validated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

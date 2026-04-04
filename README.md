@@ -4,90 +4,87 @@
   </a>
 </p>
 
-<p align="center">
-  <h1 align="center">🔭 ObservaKit</h1>
-  <p align="center">Data Observability Starter Kit for Small Teams</p>
-</p>
+<h1 align="center">🔭 ObservaKit</h1>
+<p align="center"><strong>Self-hosted data observability for small data teams — free forever.</strong></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/maintained%20by-WillowVibe-6366f1?style=flat-square" />
   <img src="https://img.shields.io/github/license/willowvibe/ObservaKit?style=flat-square" />
   <img src="https://img.shields.io/github/stars/willowvibe/ObservaKit?style=flat-square" />
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" />
+  <img src="https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/version-0.1.7-green?style=flat-square" />
 </p>
 
 <p align="center">
-  <a href="#quickstart">Quickstart</a> •
-  <a href="#features">Features</a> •
-  <a href="#architecture">Architecture</a> •
+  <a href="docs/getting-started.md">Getting Started</a> •
+  <a href="docs/real-world-use-cases.md">Use Cases</a> •
   <a href="docs/adding_checks.md">Adding Checks</a> •
   <a href="docs/alerting_setup.md">Alert Setup</a> •
-  <a href="#contributing">Contributing</a>
+  <a href="docs/faq.md">FAQ</a> •
+  <a href="docs/troubleshooting.md">Troubleshooting</a>
 </p>
 
 ---
 
-> A self-hosted, Docker-Compose-ready observability layer that gives small data teams the 5 core observability pillars — **Freshness, Volume, Quality, Schema Drift, and Pipeline Health** — without needing a paid platform like Monte Carlo or Metaplane.
+> **ObservaKit** gives 1–5 person data teams the same observability pillars that enterprise teams pay $50k/year for — running entirely on your own infrastructure in under 10 minutes.
 
-## Who Is This For?
+## Why ObservaKit?
 
-- 1–5 person data teams at seed/Series-A startups
-- Teams using **Airflow or Prefect** for orchestration
-- Teams using **dbt** for transformations
-- Warehouses: **PostgreSQL, BigQuery, or Snowflake**
-- Pain: pipelines breaking silently, dashboards going stale, no single alert channel
+| Pain | Without ObservaKit | With ObservaKit |
+|------|--------------------|-----------------|
+| Pipeline breaks silently at 3 AM | Dashboard is stale, stakeholders notice first | Freshness alert fires within 15 minutes |
+| A column gets renamed in production | Downstream models fail with cryptic errors | Schema drift alert fires at next snapshot |
+| Volume drops 70% after a bad deploy | Nobody notices until the weekly meeting | Z-score anomaly fires immediately |
+| A vendor changes their API response format | Null % climbs for weeks undetected | Distribution drift alert fires |
+| New engineer changes `status` values | Analytics break but tests pass | Data contract violation alert fires |
+| "Who broke the orders table?" | Hours of detective work in Slack | Lineage-aware alert names the upstream table |
 
-## Design Principles
+## The 7 Observability Pillars
 
-- **Zero vendor lock-in** — everything runs on open-source infra you control
-- **Plug-in, don't replace** — works alongside existing Airflow/dbt setups; no DAG refactoring required
-- **Opinionated but minimal** — ships with sensible defaults; quickstart in under 10 minutes
-- **Progressive complexity** — each observability layer is independent; adopt what you need
+| # | Pillar | What It Catches |
+|---|--------|-----------------|
+| 1 | **🕐 Freshness** | Stale tables — `max(updated_at)` vs SLA threshold |
+| 2 | **📊 Volume** | Row-count anomalies — Z-score against 7-day rolling avg |
+| 3 | **✅ Quality Checks** | Nulls, duplicates, value ranges, FK violations (Soda Core / GX / custom SQL) |
+| 4 | **🔀 Schema Drift** | Added/removed columns, type changes |
+| 5 | **🚀 Pipeline Health** | Airflow/Prefect success rates, SLA misses, task durations |
+| 6 | **📈 Distribution Drift** | Column value distribution shifts — the silent killer |
+| 7 | **📋 Data Contracts** | Schema + business rule violations against producer-defined contracts |
 
-## Features
+> **Plus:** FinOps Tracker (Snowflake credits / BigQuery bytes), Native dbt Integration, Column Profiling, Cross-table Consistency Checks, and Lineage-aware Alerts.
 
-### 1. 🕐 Freshness Monitor
-Detects stale tables by tracking `max(updated_at)` and comparing against your SLA thresholds.
+## Supported Warehouses
 
-### 2. 📊 Volume Monitor
-Tracks row counts per table per DAG run with Z-score anomaly detection against a 7-day rolling average.
+| Warehouse | Status |
+|-----------|--------|
+| PostgreSQL | ✅ Supported |
+| BigQuery | ✅ Supported |
+| Snowflake | ✅ Supported |
+| MySQL / MariaDB | ✅ Supported |
+| Amazon Redshift | ✅ Supported |
+| DuckDB | 🗓️ Planned (v0.2.0) |
+| Databricks | 🗓️ Planned |
 
-### 3. ✅ Quality Checks
-Ships with pre-built Soda Core and Great Expectations templates for null checks, duplicates, value ranges, and referential integrity.
+## Supported Alert Channels
 
-### 4. 🔀 Schema Drift Detector
-Snapshots `information_schema` and diffs against previous snapshots. Detects added/removed columns and type changes.
+| Channel | Status |
+|---------|--------|
+| Slack | ✅ Supported |
+| Email (SMTP) | ✅ Supported |
+| Discord | ✅ Supported |
+| Generic Webhook | ✅ Supported (PagerDuty, Opsgenie, n8n, etc.) |
+| Microsoft Teams | 🗓️ Planned (v0.3.0) |
+| PagerDuty native | 🗓️ Planned (v0.3.0) |
 
-### 5. 🚀 Pipeline Health
-Pulls Airflow/Prefect metrics via REST API and OpenTelemetry. Pre-built Grafana dashboards for success rates, task durations, and SLA misses.
-
-### 6. 💸 FinOps Tracker
-Tracks Snowflake compute credits and BigQuery bytes billed natively, preventing runaway dashboard queries and exploding ETL costs.
-
-### 7. 🛠️ Native dbt Integration
-Parses `run_results.json` and `manifest.json` directly into ObservaKit's Postgres database, eliminating the need for third-party dbt packages like Elementary. 
-
-## Tech Stack
-
-| Layer | Tool |
-|-------|------|
-| Data Quality | Soda Core + Great Expectations |
-| dbt Observability | Native `run_results.json` parser |
-| Pipeline Metrics | OpenTelemetry + Prometheus |
-| Dashboards | Grafana |
-| Backend API | FastAPI + SQLAlchemy |
-| Metadata Store | PostgreSQL |
-| Orchestration | Airflow / Prefect REST API |
-| Containerisation | Docker Compose |
-| Alerting | Slack webhooks, Email (SMTP) |
-
-## Quickstart
+## Quickstart (under 10 minutes)
 
 ### Prerequisites
-- Docker + Docker Compose
+- Docker + Docker Compose v2
 - Python 3.10+
-- A supported SQL warehouse (PostgreSQL, BigQuery, or Snowflake)
+- A supported SQL warehouse
 
-### 1. Clone the repo
+### 1. Clone
 ```bash
 git clone https://github.com/willowvibe/ObservaKit.git
 cd ObservaKit
@@ -96,151 +93,314 @@ cd ObservaKit
 ### 2. Configure
 ```bash
 cp .env.example .env
-# Edit .env with your warehouse credentials and Airflow URL
+# Minimum required: WAREHOUSE_TYPE, WAREHOUSE_HOST, WAREHOUSE_USER,
+# WAREHOUSE_PASSWORD, WAREHOUSE_DB, OBSERVAKIT_API_KEY
 ```
 
-### 3. Start the stack (Lite Mode)
-We recommend starting with the "Lite" mode (Backend + Postgres DB + Embedded UI):
+### 3. Start (Lite Mode — recommended for first run)
 ```bash
 docker compose -f docker-compose.lite.yml up -d
 ```
-*(If you want the full metrics stack with Prometheus and Grafana, run `docker-compose up -d` instead.)*
 
-### 4. Run the Demo Data Generator (Optional)
-To instantly see ObservaKit in action without hooking up your own database, generate 7 days of simulated history and inject data anomalies (like schema drift and volume drops):
+For the full observability stack with Prometheus + Grafana:
+```bash
+docker compose up -d
+```
+
+### 4. Try the demo (no warehouse needed)
 ```bash
 make demo
-```
-*(Once run, the UI will immediately populate with simulated pipeline failures and data quality alerts).*
-
-### 5. Open the Dashboard
-Visit `http://localhost:8000/ui` to see your data health grid, check results, and cross-table consistency alerts.
-
-### 6. Explore the API & CLI
-Visit `http://localhost:8000/docs` for the interactive Swagger UI.
-
-You can also use our built-in CLI:
-```bash
-pip install -e .
-observakit status
+# Seeds 7 days of history with injected anomalies — dashboard populates immediately
 ```
 
-### 7. Add your first quality checks
+### 5. Open the dashboard
+```
+http://localhost:8000/ui          ← Health grid + check results
+http://localhost:8000/docs        ← Interactive API (Swagger UI)
+http://localhost:8000/healthz     ← Kubernetes health probe
+```
+
+### 6. Add your first check
 ```bash
 cp checks/templates/soda/no_nulls_on_pk.yml checks/my_project/orders.yml
-# Edit the YAML to point to your table
+# Edit the YAML to point to your table and column
 ```
 
-Checks run every hour by default. Override in `config/kit.yml`.
+Checks run hourly by default. All timings are configurable in `config/kit.yml`.
 
-## Use Cases
+> **Full step-by-step walkthrough** → [docs/getting-started.md](docs/getting-started.md)
 
-### Data Migrations (Zero-Drift Guarantee)
-When migrating from legacy on-prem to a Cloud Lakehouse (e.g., Postgres to Snowflake), run ObservaKit in parallel to guarantee **zero schema drift** and **100% volume parity**. 
-- Connect ObservaKit to both source and destination.
-- Catch unsupported data type mappings early.
-- Ensure every single row makes it across.
-This turns ObservaKit into an automated audit layer for complex data migrations.
+## Configuration
 
-### Pipeline Audits & Cost Observability
-Instantly identify silent failures, stale dashboards, and missing SLA targets. Future releases will include native integration for Cost Observability (e.g., Snowflake compute credits and BigQuery bytes billed).
+All settings live in `config/kit.yml`. Environment variables are expanded with `${VAR:-default}` syntax.
+
+```yaml
+warehouse:
+  type: postgres   # postgres | bigquery | snowflake | mysql | redshift
+
+freshness:
+  enabled: true
+  tables:
+    - table: public.orders
+      timestamp_column: updated_at
+      warn_after: 1h
+      fail_after: 2h
+
+distribution:
+  enabled: true
+  tables:
+    - table: public.orders
+      columns:
+        - name: status
+          type: categorical     # tracks top-20 value shares over time
+        - name: amount
+          type: numeric         # tracks histogram + mean over time
+
+contracts:
+  enabled: true
+  contracts_dir: config/contracts/  # one YAML file per contract
+```
+
+See the [annotated kit.yml](config/kit.yml) for all options.
+
+## Data Contracts
+
+Define a YAML contract for any table and ObservaKit will validate it on every run:
+
+```yaml
+# config/contracts/orders_v1.yml
+contract:
+  id: orders_v1
+  version: "1.0.0"
+  table: public.orders
+  columns:
+    - name: status
+      nullable: false
+      allowed_values: [pending, confirmed, shipped, delivered, cancelled]
+    - name: amount
+      nullable: false
+      min: 0
+  rules:
+    - name: "No future-dated orders"
+      sql: "SELECT COUNT(*) FROM public.orders WHERE created_at > NOW()"
+      assert: "result == 0"
+```
+
+```bash
+curl -X POST http://localhost:8000/contracts/validate \
+  -H "X-API-Key: $OBSERVAKIT_API_KEY"
+```
+
+> Full guide → [docs/data-contracts.md](docs/data-contracts.md)
+
+## Distribution Drift
+
+The silent killer in production. Your `status` column still exists, your row count is fine — but 80% of orders are now `cancelled` instead of the usual 5%:
+
+```yaml
+distribution:
+  enabled: true
+  tables:
+    - table: public.orders
+      drift_threshold: 0.10        # alert if any value's share shifts >10%
+      null_drift_threshold: 0.05   # alert if null % shifts >5%
+      columns:
+        - name: status
+          type: categorical
+```
+
+ObservaKit snapshots distributions on a schedule and compares them. A Slack alert fires before your stakeholders notice.
+
+## CLI
+
+```bash
+pip install -e .
+
+observakit status             # full health summary
+observakit check              # run quality checks now
+observakit profile            # profile all configured tables
+observakit suppress orders 4h # mute alerts for 4 hours (planned maintenance)
+```
 
 ## Architecture
 
 ```mermaid
 flowchart TD
+    subgraph Warehouses
+        W[(PostgreSQL / BigQuery / Snowflake\nMySQL / Redshift)]
+    end
+
     subgraph Orchestration
-        A[Airflow / Prefect]
+        O[Airflow / Prefect]
     end
 
-    subgraph Warehouse
-        B[(PostgreSQL / BigQuery / Snowflake)]
+    subgraph ObservaKit Backend
+        API[FastAPI Service]
+        S[APScheduler]
+        DB[(Metadata Store\nPostgreSQL / SQLite)]
     end
 
-    subgraph Kit - Backend
-        C[FastAPI Service]
-        D[(Metadata Store - Postgres)]
-        E[Scheduler - APScheduler]
-        F[Schema Diff Engine]
-        G[Volume Anomaly Detector]
-        H[Freshness Poller]
+    subgraph Observability Pillars
+        F[Freshness Poller]
+        V[Volume Anomaly Detector]
+        Q[Quality Checks\nSoda / GX / Custom SQL]
+        SD[Schema Drift Engine]
+        DD[Distribution Drift Monitor]
+        DC[Data Contracts Validator]
+        P[Column Profiler]
     end
 
-    subgraph Quality
-        I[Soda Core / Great Expectations]
-        J[Native dbt parser]
-    end
-
-    subgraph Observability Stack
-        K[OpenTelemetry Collector]
-        L[Prometheus]
-        M[Grafana Dashboards]
+    subgraph Integrations
+        DBT[Native dbt Parser\nrun_results.json]
+        OTEL[OpenTelemetry]
+        PROM[Prometheus]
+        GRAF[Grafana]
     end
 
     subgraph Alerts
-        N[Slack / Email / PagerDuty]
+        SL[Slack]
+        EM[Email]
+        DI[Discord]
+        WH[Generic Webhook\nPagerDuty / Opsgenie]
     end
 
-    A -- REST API / OTel --> K
-    B -- SQL queries --> H
-    B -- SQL queries --> G
-    B -- information_schema --> F
-    B -- check execution --> I
-    J -- JSON artifacts --> D
-    I -- results --> C
-    C --> D
-    E --> C
-    K --> L
-    L --> M
-    C -- Prometheus metrics --> L
-    C -- alert trigger --> N
+    W --> F & V & Q & SD & DD & DC & P
+    O -- REST API --> API
+    DBT --> DB
+    S --> F & V & Q & SD & DD & DC
+    F & V & Q & SD & DD & DC & P --> DB
+    API --> DB
+    API --> PROM --> GRAF
+    O --> OTEL --> PROM
+    DB --> SL & EM & DI & WH
 ```
-
-## Project Structure
 
 ## Project Structure
 
 ```
 ObservaKit/
-├── docker-compose.yml
-├── .env.example
-├── config/
-│   ├── kit.yml
-│   └── warehouses/
-├── checks/
-│   ├── templates/
-│   └── examples/
 ├── backend/
-│   ├── main.py
-│   ├── models.py
-│   ├── scheduler.py
+│   ├── main.py                  ← FastAPI app + /healthz + /status
+│   ├── models.py                ← SQLAlchemy models (12 tables)
+│   ├── scheduler.py             ← APScheduler (standalone mode)
 │   └── routers/
-├── landing-page/       <-- Vite/React GitHub Pages site
-├── dbt_integration/    <-- Native parsing logic for dbt artifacts
+│       ├── checks.py            ← Quality checks + volume + consistency
+│       ├── freshness.py         ← Freshness polling
+│       ├── schema_diff.py       ← Schema drift detection
+│       ├── distribution.py      ← Distribution drift (NEW)
+│       ├── contracts.py         ← Data contracts (NEW)
+│       ├── finops.py            ← Cost tracking
+│       ├── profiling.py         ← Column profiling
+│       ├── suppressions.py      ← Alert suppression windows
+│       └── webhooks.py          ← Incoming webhooks
 ├── connectors/
+│   ├── postgres.py              ← PostgreSQL
+│   ├── bigquery.py              ← BigQuery
+│   ├── snowflake.py             ← Snowflake
+│   ├── mysql.py                 ← MySQL / MariaDB (NEW)
+│   └── redshift.py              ← Amazon Redshift (NEW)
 ├── alerts/
-├── otel/
-├── prometheus/
-├── grafana/
-│   ├── dashboards/
-│   └── provisioning/
-├── tests/
-└── docs/
+│   ├── slack.py                 ← Slack webhooks
+│   ├── email.py                 ← SMTP email
+│   ├── discord.py               ← Discord webhooks (NEW)
+│   └── webhook.py               ← Generic outgoing webhook (NEW)
+├── config/
+│   ├── kit.yml                  ← Master config (all pillars)
+│   ├── contracts/               ← Data contract YAML files (NEW)
+│   │   └── example_orders.yml
+│   └── warehouses/              ← Per-warehouse connection configs
+├── checks/
+│   ├── templates/               ← Soda Core + Great Expectations templates
+│   └── examples/                ← Example checks for orders, self-checks
+├── dbt_integration/             ← Native dbt artifact parser
+├── landing-page/                ← Vite/React embedded dashboard
+├── cli/                         ← observakit CLI
+├── tests/                       ← Pytest suite
+├── docs/                        ← Full documentation
+├── grafana/                     ← Grafana dashboard provisioning
+├── prometheus/                  ← Prometheus config
+├── otel/                        ← OpenTelemetry collector config
+├── docker-compose.yml           ← Full stack
+├── docker-compose.lite.yml      ← Lite mode (backend + postgres only)
+└── Makefile                     ← make up / down / test / demo
 ```
+
+## Comparison with Alternatives
+
+| Feature | ObservaKit | Monte Carlo | Metaplane | Great Expectations |
+|---------|-----------|-------------|-----------|-------------------|
+| **Price** | Free / self-hosted | $30k–$100k/yr | $15k–$50k/yr | Free (OSS) |
+| **Setup time** | < 10 min | Days (sales cycle) | Days | Hours–Days |
+| **Self-hosted** | ✅ | ❌ SaaS only | ❌ SaaS only | ✅ |
+| **Freshness monitoring** | ✅ | ✅ | ✅ | ❌ |
+| **Volume anomaly detection** | ✅ | ✅ | ✅ | ❌ |
+| **Distribution drift** | ✅ | ✅ | ✅ | Partial |
+| **Schema drift** | ✅ | ✅ | ✅ | ❌ |
+| **Data contracts** | ✅ | ✅ (enterprise) | ❌ | ❌ |
+| **Native dbt integration** | ✅ (no packages) | ✅ | ✅ | Partial |
+| **Pipeline health (Airflow/Prefect)** | ✅ | ✅ | Partial | ❌ |
+| **FinOps tracking** | ✅ | ❌ | ❌ | ❌ |
+| **MySQL / Redshift support** | ✅ | ✅ | Partial | ✅ |
+| **Discord alerts** | ✅ | ❌ | ❌ | ❌ |
+| **Vendor lock-in** | ❌ None | 🔒 High | 🔒 High | ❌ None |
+
+## Real-World Use Cases
+
+- **Data migration audits** — Run ObservaKit against source and destination simultaneously to guarantee zero schema drift and 100% volume parity during cloud migrations.
+- **dbt project health** — Parse `run_results.json` natively; no Elementary package or dbt Cloud required. Track model success rates and test failures in one place.
+- **Multi-team data contracts** — Each producing team owns a contract YAML. ObservaKit validates it on every pipeline run and alerts consumers before they're broken.
+- **Cost governance** — Track Snowflake credit burn and BigQuery bytes billed per pipeline. Alert when a single query scans more than a configured threshold.
+- **Seed-stage startups** — Get enterprise-grade data observability on a startup budget. Replace ad-hoc Slack messages with structured, routed alerts.
+
+Full scenarios → [docs/real-world-use-cases.md](docs/real-world-use-cases.md)
+
+## Makefile Commands
+
+```bash
+make up           # Start full stack (Prometheus + Grafana)
+make up-lite      # Start lite mode (backend + postgres only)
+make down         # Stop all services
+make build        # Rebuild backend Docker image
+make test         # Run pytest suite
+make test-cov     # Run tests with coverage report
+make lint         # Ruff linting
+make format       # Auto-format with ruff
+make migrate      # Run Alembic migrations
+make demo         # Generate 7 days of mock data with anomalies
+make logs         # Follow backend logs
+make dev          # Run in dev mode (hot reload)
+make ui-build     # Build React dashboard
+```
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](docs/getting-started.md) | Step-by-step first 15 minutes |
+| [Adding Checks](docs/adding_checks.md) | Write Soda, GX, and custom SQL checks |
+| [Data Contracts](docs/data-contracts.md) | Define and enforce data contracts |
+| [Alert Setup](docs/alerting_setup.md) | Configure Slack, Email, Discord, Webhooks |
+| [Architecture](docs/architecture.md) | System design with diagrams |
+| [Real-World Use Cases](docs/real-world-use-cases.md) | How real teams use ObservaKit |
+| [FAQ](docs/faq.md) | Frequently asked questions |
+| [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
+
+> 📹 **Video walkthrough coming soon** — follow the repo to be notified.
 
 ## Contributing
 
-Contributions welcome! Please read the guidelines before opening a PR.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Good First Issues
-- Add a new warehouse connector
+**Good first issues:**
+- Add a new warehouse connector (DuckDB, Databricks, Trino)
 - Add a Grafana dashboard for a new use case
-- Write a quality check template for a common schema
-- Improve documentation or quickstart clarity
+- Write a quality check template for a common schema pattern
+- Improve documentation or add a tutorial
+- Add Microsoft Teams alert dispatcher
 
 ## License
 
-MIT License — free to use, modify, and distribute.
+MIT — free to use, modify, and distribute.
 
 ---
 

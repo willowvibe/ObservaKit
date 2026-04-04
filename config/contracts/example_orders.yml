@@ -1,0 +1,113 @@
+# =============================================================================
+# ObservaKit — Data Contract Example: Orders Table
+# =============================================================================
+#
+# What is a Data Contract?
+#   A versioned, machine-enforceable agreement between the team that PRODUCES
+#   data (e.g. the backend engineering team) and the team that CONSUMES it
+#   (e.g. the analytics team or ML pipeline).
+#
+#   If the producer changes the schema or breaks business rules, ObservaKit
+#   catches it automatically before consumers are silently broken.
+#
+# How to use:
+#   1. Copy this file to config/contracts/my_table.yml
+#   2. Fill in your actual table name, columns, and rules
+#   3. Set contracts.enabled: true in config/kit.yml
+#   4. Call POST /contracts/validate (or wait for the scheduler)
+#
+# =============================================================================
+
+contract:
+  id: orders_v1
+  version: "1.2.0"
+  table: public.orders
+  owner: "data-engineering@company.com"
+  description: |
+    Core orders table produced by the backend API ingestion pipeline.
+    Consumed by: analytics dashboards, revenue reporting, ML churn model.
+  sla:
+    freshness_warn: 2h
+    freshness_fail: 6h
+
+  # ---- Column-level rules ----
+  columns:
+    - name: id
+      type: integer
+      nullable: false
+      unique: true
+      description: "Primary key — must be unique and never null"
+
+    - name: customer_id
+      type: integer
+      nullable: false
+      description: "Foreign key to customers table"
+
+    - name: status
+      type: varchar
+      nullable: false
+      allowed_values:
+        - pending
+        - confirmed
+        - shipped
+        - delivered
+        - cancelled
+        - refunded
+      description: "Order lifecycle status — only these values are valid"
+
+    - name: amount
+      type: numeric
+      nullable: false
+      min: 0
+      description: "Order value in USD — must never be negative"
+
+    - name: created_at
+      type: timestamp
+      nullable: false
+      description: "UTC timestamp of order creation"
+
+    - name: updated_at
+      type: timestamp
+      nullable: true
+      description: "UTC timestamp of last status update"
+
+    - name: currency
+      type: varchar
+      nullable: false
+      allowed_values: [USD, EUR, GBP, CAD, AUD, JPY]
+      description: "ISO 4217 currency code"
+
+  # ---- Table-level rules ----
+  volume:
+    min_rows: 1000
+    description: "Orders table should never be empty or near-empty"
+
+  # ---- Custom SQL business rules ----
+  rules:
+    - name: "No future-dated orders"
+      sql: "SELECT COUNT(*) FROM public.orders WHERE created_at > NOW()"
+      assert: "result == 0"
+      severity: critical
+      description: "Orders must not have created_at in the future (timezone bug indicator)"
+
+    - name: "No negative revenue"
+      sql: "SELECT COALESCE(MIN(amount), 0) FROM public.orders WHERE status != 'refunded'"
+      assert: "result >= 0"
+      severity: critical
+
+    - name: "Delivered orders have updated_at set"
+      sql: |
+        SELECT COUNT(*) FROM public.orders
+        WHERE status = 'delivered' AND updated_at IS NULL
+      assert: "result == 0"
+      severity: warning
+
+    - name: "At least 90% of orders created in last 30 days"
+      sql: |
+        SELECT
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') * 100.0
+          / NULLIF(COUNT(*), 0)
+        FROM public.orders
+      assert: "result is None or result >= 90"
+      severity: warning
+      description: "Guards against data truncation — old-only data suggests a broken pipeline"
