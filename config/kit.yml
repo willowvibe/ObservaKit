@@ -77,6 +77,37 @@ quality:
       table: order_items
       alert: slack
 
+# ---- Distribution Drift Monitor ----
+# Detects when column VALUE distributions shift — not just nulls or row counts.
+# Example: 'status' column suddenly goes from 5% cancelled → 80% cancelled.
+distribution:
+  enabled: false  # set to true to enable
+  schedule_minutes: 360
+  tables:
+    - table: public.orders
+      drift_threshold: 0.10       # fire alert if any value's share shifts by >10%
+      null_drift_threshold: 0.05  # fire alert if null % shifts by >5%
+      columns:
+        - name: status
+          type: categorical
+        - name: amount
+          type: numeric
+    # - table: public.users
+    #   columns:
+    #     - name: country_code
+    #       type: categorical
+    #     - name: age
+    #       type: numeric
+
+# ---- Data Contracts ----
+# Validate tables against producer-defined contracts (schema + business rules).
+# Contract files live in config/contracts/*.yml
+# See config/contracts/example_orders.yml for the full contract format.
+contracts:
+  enabled: false  # set to true to enable
+  schedule_minutes: 60
+  contracts_dir: config/contracts/
+
 # ---- Alerting ----
 alerts:
   # Routing rules: match alerts to channels and recipients
@@ -90,6 +121,20 @@ alerts:
         alert_type: "freshness"
       channel: slack
       slack_channel: "#data-freshness"
+    # Route contract violations and distribution drift to a dedicated channel
+    - match:
+        alert_type: "contract"
+      channel: slack
+      slack_channel: "#data-contracts"
+    - match:
+        alert_type: "distribution"
+      channel: slack
+      slack_channel: "#data-alerts"
+    # Uncomment to also fire a generic webhook for all critical alerts
+    # - match:
+    #     alert_type: "quality"
+    #   channel: webhook
+    #   webhook_url: ${WEBHOOK_ALERT_URL}
 
   slack:
     webhook_url: ${SLACK_WEBHOOK_URL}
@@ -101,6 +146,14 @@ alerts:
     smtp_port: ${SMTP_PORT:-587}
     from: ${ALERT_EMAIL_FROM}
     to: ${ALERT_EMAIL_TO}
+  # Discord — popular with developer-first teams
+  discord:
+    webhook_url: ${DISCORD_WEBHOOK_URL:-}
+    mention: ${DISCORD_MENTION:-}   # e.g. "@here" or "<@&ROLE_ID>"
+  # Generic outgoing webhook (integrates with PagerDuty, Opsgenie, custom systems)
+  webhook:
+    url: ${WEBHOOK_ALERT_URL:-}
+    secret: ${WEBHOOK_SECRET:-}     # HMAC-SHA256 signing secret (optional)
 
 # ---- Lineage ----
 lineage:

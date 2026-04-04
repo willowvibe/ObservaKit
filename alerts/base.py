@@ -26,8 +26,17 @@ def get_alert_dispatcher(channel: str, **kwargs) -> AlertDispatcher:
     elif channel == "email":
         from alerts.email import EmailDispatcher
         return EmailDispatcher(**kwargs)
+    elif channel == "discord":
+        from alerts.discord import DiscordDispatcher
+        return DiscordDispatcher(**kwargs)
+    elif channel == "webhook":
+        from alerts.webhook import WebhookDispatcher
+        return WebhookDispatcher(**kwargs)
     else:
-        raise ValueError(f"Unsupported alert channel: {channel}")
+        raise ValueError(
+            f"Unsupported alert channel: '{channel}'. "
+            f"Supported: slack, email, discord, webhook"
+        )
 
 
 def dispatch_alert(alert_type: str, message: str, table_name: str = None, subject: str = None):

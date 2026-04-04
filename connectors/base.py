@@ -102,8 +102,17 @@ def get_warehouse_connector() -> WarehouseConnector:
     elif warehouse_type == "snowflake":
         from connectors.snowflake import SnowflakeConnector
         return SnowflakeConnector()
+    elif warehouse_type in ("mysql", "mariadb"):
+        from connectors.mysql import MySQLConnector
+        return MySQLConnector()
+    elif warehouse_type == "redshift":
+        from connectors.redshift import RedshiftConnector
+        return RedshiftConnector()
     else:
-        raise ValueError(f"Unsupported warehouse type: {warehouse_type}")
+        raise ValueError(
+            f"Unsupported warehouse type: '{warehouse_type}'. "
+            f"Supported: postgres, bigquery, snowflake, mysql, mariadb, redshift"
+        )
 
 
 def get_orchestrator_connector() -> OrchestratorConnector:
