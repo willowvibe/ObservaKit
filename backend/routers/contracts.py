@@ -59,6 +59,8 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
+from backend.routers.checks import _safe_eval_assertion
+
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -197,8 +199,10 @@ def validate_contracts(
             # Allowed values check
             if allowed_values:
                 try:
-                    # Build a safe IN clause using parameterised-style quoting
-                    quoted = ", ".join(f"'{v}'" for v in allowed_values)
+                    # Escape single quotes inside each value to prevent SQL injection
+                    quoted = ", ".join(
+                        "'" + str(v).replace("'", "''") + "'" for v in allowed_values
+                    )
                     invalid_result = connector.execute_query(
                         f"""
                         SELECT COUNT(*) AS cnt FROM {table}
@@ -274,7 +278,7 @@ def validate_contracts(
                     result_value = list(rule_result[0].values())[0] or 0
 
                 try:
-                    passed = bool(eval(assertion, {"__builtins__": None}, {"result": result_value}))
+                    passed = _safe_eval_assertion(assertion, result_value)
                 except Exception:
                     passed = False
 

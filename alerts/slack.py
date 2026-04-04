@@ -21,7 +21,7 @@ class SlackDispatcher(AlertDispatcher):
         # Use provided channel from routing rule, else standard env var
         self._channel = kwargs.get("slack_channel") or os.getenv("SLACK_CHANNEL", "#data-alerts")
 
-    def send(self, message: str, subject: str = None, blocks: list = None) -> bool:
+    def send(self, message: str, subject: str = None, blocks: list = None, **kwargs) -> bool:
         """Send a Slack message via webhook."""
         if not self._webhook_url or self._webhook_url.startswith("https://hooks.slack.com/services/YOUR"):
             logger.warning("Slack webhook URL not configured — skipping alert")

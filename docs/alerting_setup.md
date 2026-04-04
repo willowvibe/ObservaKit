@@ -1,8 +1,12 @@
 # Alerting Setup Guide
 
-ObservaKit supports **Slack** and **Email (SMTP)** alerts out of the box, with PagerDuty planned for a future release.
+ObservaKit supports four alert channels out of the box: **Slack**, **Email (SMTP)**, **Discord**, and a generic **Webhook** (compatible with PagerDuty, Opsgenie, n8n, and any HTTP receiver).
 
-## Slack Setup
+All channels are configured through routing rules in `config/kit.yml` and resolved at runtime using the `dispatch_alert()` function. Each rule can match on `alert_type` and/or a `table_pattern` glob, with a fallback to `default_channel` when no rule matches.
+
+---
+
+## Slack
 
 ### 1. Create a Slack Incoming Webhook
 
@@ -15,33 +19,40 @@ ObservaKit supports **Slack** and **Email (SMTP)** alerts out of the box, with P
 
 ### 2. Configure ObservaKit
 
-Add the webhook URL to your `.env` file:
+Add to your `.env` file:
 
 ```bash
 SLACK_WEBHOOK_URL=<your-slack-webhook-url>
 SLACK_CHANNEL=#data-alerts
 ```
 
-Or configure in `config/kit.yml`:
+Or configure routing in `config/kit.yml`:
 
 ```yaml
 alerts:
-  slack:
-    webhook_url: ${SLACK_WEBHOOK_URL}
-    channel: "#data-alerts"
-    username: ObservaKit
-    icon_emoji: ":mag:"
+  default_channel: slack
+  routing:
+    - match:
+        alert_type: freshness
+      channel: slack
+      slack_channel: "#data-freshness"
+    - match:
+        alert_type: quality
+        table_pattern: "payments.*"
+      channel: slack
+      slack_channel: "#payments-data"
 ```
 
 ### 3. Test the Alert
 
 ```bash
-curl -X POST http://localhost:8000/freshness/poll
+curl -X POST http://localhost:8000/freshness/poll \
+  -H "X-API-Key: $OBSERVAKIT_API_KEY"
 ```
 
-If any table exceeds its freshness threshold, you'll see an alert in your Slack channel.
+---
 
-## Email (SMTP) Setup
+## Email (SMTP)
 
 ### 1. Configure SMTP Credentials
 
@@ -58,40 +69,167 @@ ALERT_EMAIL_TO=data-team@yourcompany.com
 
 > **Note for Gmail**: Use an [App Password](https://support.google.com/accounts/answer/185833) instead of your account password.
 
-### 2. Configure in kit.yml
+### 2. Route Alerts to Email
+
+In `config/kit.yml`:
 
 ```yaml
 alerts:
-  email:
-    smtp_host: ${SMTP_HOST}
-    smtp_port: ${SMTP_PORT}
-    from: ${ALERT_EMAIL_FROM}
-    to: ${ALERT_EMAIL_TO}
+  routing:
+    - match:
+        alert_type: quality
+      channel: email
 ```
 
-### 3. Point Checks to Email
+---
 
-In `config/kit.yml`, set `alert: email` for any table:
+## Discord
+
+Discord is popular with developer-heavy teams. ObservaKit sends rich embedded messages with colour-coded severity.
+
+### 1. Create a Discord Webhook
+
+1. Open your Discord server → **Server Settings** → **Integrations** → **Webhooks**
+2. Click **New Webhook**, choose your `#data-alerts` channel
+3. Copy the webhook URL
+
+### 2. Configure ObservaKit
+
+Add to your `.env` file:
+
+```bash
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX
+DISCORD_MENTION=@here          # Optional: ping on-call when alerts fire
+```
+
+### 3. Route Alerts to Discord
+
+In `config/kit.yml`:
 
 ```yaml
-freshness:
-  tables:
-    - table: public.orders
-      timestamp_column: updated_at
-      warn_after: 1h
-      fail_after: 2h
-      alert: email  # ← Use email instead of slack
+alerts:
+  default_channel: discord
 ```
+
+Colour coding is automatic:
+| Alert Type | Colour |
+|------------|--------|
+| volume, quality, contract | 🔴 Red |
+| freshness, schema, distribution, finops | 🟡 Yellow |
+
+---
+
+## Webhook (PagerDuty / Opsgenie / n8n / custom)
+
+The generic webhook channel posts a signed JSON payload to any HTTP endpoint.
+
+### Payload Format
+
+```json
+{
+  "source": "observakit",
+  "version": "0.1.7",
+  "alert_type": "volume",
+  "table_name": "public.orders",
+  "subject": "🔴 Volume Anomaly: public.orders",
+  "message": "...",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "severity": "critical"
+}
+```
+
+Severity mapping:
+
+| Alert Type | Severity |
+|------------|----------|
+| quality, volume, contract | critical |
+| freshness, schema, distribution | warning |
+| finops | info |
+
+### HMAC Signature Verification (optional)
+
+Set `WEBHOOK_SECRET` and ObservaKit adds an `X-ObservaKit-Signature: sha256=<hex>` header. Verify on the receiver side with `hmac.compare_digest`.
+
+### 1. Configure the Webhook
+
+Add to your `.env` file:
+
+```bash
+WEBHOOK_ALERT_URL=https://events.pagerduty.com/v2/enqueue
+WEBHOOK_SECRET=my-shared-secret          # optional
+WEBHOOK_AUTH_HEADER=Bearer my-api-token  # optional extra header
+```
+
+### 2. Route Alerts to Webhook
+
+In `config/kit.yml`:
+
+```yaml
+alerts:
+  routing:
+    - match:
+        alert_type: quality
+      channel: webhook
+      webhook_url: https://events.pagerduty.com/v2/enqueue
+      webhook_severity_map:
+        quality: critical
+        freshness: warning
+```
+
+---
+
+## Alert Routing Rules
+
+Rules are evaluated top-to-bottom; the **first match wins**. If no rule matches, `default_channel` is used.
+
+```yaml
+alerts:
+  default_channel: slack
+
+  routing:
+    # All schema alerts for payments tables → Slack #finance-data
+    - match:
+        alert_type: schema
+        table_pattern: "payments.*"
+      channel: slack
+      slack_channel: "#finance-data"
+
+    # All quality failures → PagerDuty webhook
+    - match:
+        alert_type: quality
+      channel: webhook
+      webhook_url: https://events.pagerduty.com/v2/enqueue
+
+    # Everything else → default (slack #data-alerts)
+```
+
+---
 
 ## Alert Types
 
 | Alert | Trigger | Example |
 |-------|---------|---------|
-| Freshness | Table lag exceeds `warn_after` or `fail_after` | 🟡 Freshness Alert: public.orders — Lag: 1.5 hours |
-| Volume | Row count deviates >X% from 7-day rolling avg | 🔴 Volume Anomaly: public.orders — Deviation: 45.2% |
-| Schema Drift | Column added, removed, or type changed | ⚠️ Schema Drift: public.orders — Column `discount_pct` added |
-| Quality | Soda/GX check fails | ❌ Quality Check Failed: missing_count(order_id) = 3 |
+| `freshness` | Table lag exceeds `warn_after` or `fail_after` | 🟡 Freshness Alert: public.orders — Lag: 1.5 hours |
+| `volume` | Row count deviates >X% from 7-day rolling avg | 🔴 Volume Anomaly: public.orders — Deviation: 45.2% |
+| `schema` | Column added, removed, or type changed | ⚠️ Schema Drift: public.orders — Column `discount_pct` added |
+| `quality` | Soda check or custom SQL assertion fails | ❌ Quality Check Failed: missing_count(order_id) = 3 |
+| `distribution` | Column value share shifts beyond threshold | 📊 Distribution Drift: public.orders.status |
+| `contract` | Data contract rule violated | 📋 Contract Violation: orders_v1 |
+| `finops` | Warehouse compute cost anomaly | 💰 FinOps: BigQuery bytes exceeded threshold |
 
-## PagerDuty (Planned)
+---
 
-PagerDuty integration is on the roadmap. To contribute, add a new dispatcher in `alerts/pagerduty.py` implementing the `AlertDispatcher` base class.
+## Alert Suppression
+
+Suppress alerts during planned maintenance windows via the API:
+
+```bash
+curl -X POST http://localhost:8000/suppress \
+  -H "X-API-Key: $OBSERVAKIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "table_name": "public.orders",
+    "suppressed_until": "2024-01-15T08:00:00Z",
+    "reason": "Planned backfill — ignore volume spikes"
+  }'
+```

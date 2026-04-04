@@ -3,18 +3,27 @@ ObservaKit — Quality Checks & Volume Monitor Router
 Triggers Soda/GX checks, stores results, and runs volume anomaly detection.
 """
 
+import ast
+import glob
+import json
 import logging
-from datetime import datetime, timezone
+import operator
+import os
+import subprocess
+import tempfile
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Gauge
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models import CheckResult, VolumeRecord, get_db
-from alerts.base import dispatch_alert, get_lineage_impact
+from alerts.base import dispatch_alert, get_lineage_impact, is_alert_deduped, is_alert_suppressed
+from backend.models import AlertLog, CheckResult, CheckSuppression, VolumeRecord, get_db
 from config.loader import load_config
+from connectors.base import get_warehouse_connector
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +43,64 @@ volume_deviation_gauge = Gauge(
 )
 
 MIN_HISTORY_FOR_ANOMALY = 3  # Require at least this many past records before firing anomaly
+
+# ---------------------------------------------------------------------------
+# Safe assertion evaluator
+# ---------------------------------------------------------------------------
+_SAFE_OPS = {
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+}
+
+
+def _safe_eval_assertion(expression: str, result_value) -> bool:
+    """
+    Evaluate a simple comparison assertion like 'result == 0' or 'result >= 100'
+    without using eval(). Only comparisons between 'result' and a numeric literal
+    are supported. Raises ValueError on unsupported expressions.
+    """
+    try:
+        tree = ast.parse(expression.strip(), mode="eval")
+    except SyntaxError as e:
+        raise ValueError(f"Invalid assertion syntax: {expression!r}") from e
+
+    node = tree.body
+    if not isinstance(node, ast.Compare):
+        raise ValueError(
+            f"Assertion must be a simple comparison (e.g. 'result == 0'), got: {expression!r}"
+        )
+    if len(node.ops) != 1 or len(node.comparators) != 1:
+        raise ValueError(
+            f"Only single comparisons are supported, got: {expression!r}"
+        )
+
+    left = node.left
+    op = node.ops[0]
+    right = node.comparators[0]
+
+    # Left side must be the name 'result'
+    if not (isinstance(left, ast.Name) and left.id == "result"):
+        raise ValueError(
+            f"Left side of assertion must be 'result', got: {ast.dump(left)!r}"
+        )
+
+    # Right side must be a numeric constant (int or float)
+    if isinstance(right, ast.Constant) and isinstance(right.value, (int, float)):
+        rhs = right.value
+    else:
+        raise ValueError(
+            f"Right side of assertion must be a numeric literal, got: {ast.dump(right)!r}"
+        )
+
+    op_fn = _SAFE_OPS.get(type(op))
+    if op_fn is None:
+        raise ValueError(f"Unsupported comparison operator in assertion: {expression!r}")
+
+    return bool(op_fn(result_value, rhs))
 
 
 @router.get("/results")
@@ -76,7 +143,6 @@ def get_check_trends(
     Get quality check trends for a specific table:
     Pass rate over time, failure streaks, and average execution time.
     """
-    from datetime import timedelta
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     results = db.query(CheckResult).filter(
@@ -129,10 +195,6 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
     """
     Trigger quality checks using configured engine (Soda Core or GX).
     """
-    import glob
-    import os
-    from connectors.base import get_warehouse_connector
-
     try:
         config = load_config("config/kit.yml")
     except FileNotFoundError:
@@ -191,11 +253,10 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
                 first_row = query_results[0]
                 result_value = list(first_row.values())[0] if first_row else 0
 
-            # Evaluate assertion
+            # Evaluate assertion using a safe restricted evaluator
             passed = False
             try:
-                # Safe eval with restricted globals
-                passed = eval(assertion, {"__builtins__": None}, {"result": result_value})
+                passed = _safe_eval_assertion(assertion, result_value)
             except Exception as eval_e:
                 logger.error(f"Assertion evaluation failed for {name}: {eval_e}")
                 passed = False
@@ -220,14 +281,8 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
             })
 
             if not passed and not dry_run:
-                # Check active suppressions
-                from backend.models import CheckSuppression
-                suppression = db.query(CheckSuppression).filter(
-                    CheckSuppression.table_name == table,
-                    CheckSuppression.suppressed_until >= datetime.now(timezone.utc),
-                ).first()
-                if suppression:
-                    logger.info(f"Alert suppressed for {table} — reason: {suppression.reason}")
+                if is_alert_suppressed(db, table):
+                    pass
                 else:
                     # Trigger lineage-aware alert
                     downstream = get_lineage_impact(table)
@@ -259,12 +314,6 @@ def _run_soda_check(check_file: str, connector) -> list[dict]:
     The Python API (scan.get_checks_fail()) accesses private attributes that
     change between Soda versions. The subprocess approach uses the public CLI contract.
     """
-    import json
-    import os
-    import subprocess
-    import tempfile
-    import yaml
-
     soda_config = connector.get_soda_config()
 
     # Write a temp datasource config file for this run
@@ -297,8 +346,6 @@ def _run_soda_check(check_file: str, connector) -> list[dict]:
 
 def _parse_soda_json_output(stdout: str, returncode: int, check_file: str) -> list[dict]:
     """Parse Soda's --json-output into ObservaKit check result dicts."""
-    import json
-
     results = []
     try:
         # Soda prints one JSON object per line in some versions, or a single array
@@ -331,14 +378,23 @@ def _parse_soda_json_output(stdout: str, returncode: int, check_file: str) -> li
 
 
 def _run_gx_check(check_file: str, connector) -> list[dict]:
-    """Execute Great Expectations checks (Simplified implementation)."""
-    # This is a placeholder for actual GX execution logic as GX setup is more involved
-    logger.info(f"Running GX checks for {check_file}")
+    """Execute Great Expectations checks.
+
+    NOTE: GX integration is not yet implemented. Configure engine: soda in kit.yml
+    or contribute a GX runner to connectors/gx_runner.py.
+    """
+    logger.warning(
+        f"Great Expectations engine selected for {check_file} but is not yet implemented. "
+        "Switch to engine: soda in kit.yml or implement GX execution logic."
+    )
     return [{
-        "check_name": "gx_check_placeholder",
+        "check_name": "gx_not_implemented",
         "table_name": "unknown",
-        "passed": True,
-        "details": "GX execution logic placeholder"
+        "passed": False,
+        "details": (
+            "Great Expectations execution is not implemented. "
+            "Use engine: soda in kit.yml or add a GX runner."
+        ),
     }]
 
 
@@ -368,14 +424,10 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
         threshold = table_cfg.get("anomaly_threshold", 0.3)
 
         try:
-            from connectors.base import get_warehouse_connector
-
             _connector = connector or get_warehouse_connector()
             current_count = _connector.get_row_count(table_name)
 
             # Calculate rolling average from stored history
-            from datetime import timedelta
-
             cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
 
             # Count history records to enforce minimum guard
@@ -398,7 +450,13 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
             )
 
             rolling_avg = float(avg_result) if avg_result else float(current_count)
-            deviation = abs(current_count - rolling_avg) / rolling_avg if rolling_avg > 0 else 0
+            if rolling_avg > 0:
+                deviation = abs(current_count - rolling_avg) / rolling_avg
+            elif current_count > 0:
+                # Table was empty historically but now has rows — treat as 100% growth
+                deviation = 1.0
+            else:
+                deviation = 0.0
 
             # Only flag anomaly if we have enough history
             sufficient_history = history_count >= MIN_HISTORY_FOR_ANOMALY
@@ -445,19 +503,7 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
 
 def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, channel: str, db: Session):
     """Dispatch a volume anomaly alert."""
-    from datetime import timedelta
-
-    from alerts.base import get_alert_dispatcher
-    from backend.models import AlertLog
-
-    # Deduplication: skip if same table+type was alerted in the last 60 minutes
-    recent = db.query(AlertLog).filter(
-        AlertLog.table_name == table,
-        AlertLog.alert_type == "volume",
-        AlertLog.sent_at >= datetime.now(timezone.utc) - timedelta(minutes=60),
-    ).first()
-    if recent:
-        logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
+    if is_alert_deduped(db, table, "volume"):
         return
 
     downstream = get_lineage_impact(table)

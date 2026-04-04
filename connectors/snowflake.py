@@ -56,9 +56,9 @@ class SnowflakeConnector(WarehouseConnector):
             return result[0] if result and result[0] else None
         except Exception as e:
             logger.error(f"Snowflake error getting max timestamp for {table}.{column}: {e}")
-            raise
-        finally:
+            # Close on error so the next connect() gets a fresh connection
             self.close()
+            raise
 
     def get_row_count(self, table: str) -> int:
         """Get the current row count of a table."""
@@ -70,9 +70,8 @@ class SnowflakeConnector(WarehouseConnector):
             return result[0] if result else 0
         except Exception as e:
             logger.error(f"Snowflake error getting row count for {table}: {e}")
-            raise
-        finally:
             self.close()
+            raise
 
     def get_schema(self, table: str) -> list[dict]:
         """Get schema from INFORMATION_SCHEMA.COLUMNS."""
@@ -103,9 +102,8 @@ class SnowflakeConnector(WarehouseConnector):
             ]
         except Exception as e:
             logger.error(f"Snowflake error getting schema for {table}: {e}")
-            raise
-        finally:
             self.close()
+            raise
 
     def execute_query(self, query: str, params: dict = None) -> list[dict]:
         """Execute a raw SQL query."""
@@ -120,9 +118,8 @@ class SnowflakeConnector(WarehouseConnector):
             ]
         except Exception as e:
             logger.error(f"Snowflake error executing query: {e}")
-            raise
-        finally:
             self.close()
+            raise
 
     def get_compute_costs(self, days: int = 7) -> float:
         """Get compute credits used over the last N days."""
@@ -139,9 +136,8 @@ class SnowflakeConnector(WarehouseConnector):
             return float(result[0]) if result and result[0] else 0.0
         except Exception as e:
             logger.error(f"Snowflake error getting compute costs: {e}")
-            return 0.0
-        finally:
             self.close()
+            return 0.0
 
     def get_soda_config(self) -> dict:
         """Return configuration for Soda Core."""

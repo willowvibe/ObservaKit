@@ -4,12 +4,14 @@ Snapshots information_schema and detects column-level changes.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.models import SchemaDiff, SchemaSnapshot, get_db
+from alerts.base import dispatch_alert
+from backend.models import AlertLog, SchemaDiff, SchemaSnapshot, get_db
+from config.loader import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +23,8 @@ def take_snapshot(db: Session = Depends(get_db)):
     """
     Snapshot the current schema for all configured tables and detect drift.
     """
-    import yaml
-
     try:
-        with open("config/kit.yml", "r") as f:
-            config = yaml.safe_load(f)
+        config = load_config("config/kit.yml")
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="config/kit.yml not found")
 
@@ -39,7 +38,6 @@ def take_snapshot(db: Session = Depends(get_db)):
     for table_name in tables:
         try:
             from connectors.base import get_warehouse_connector
-
             connector = get_warehouse_connector()
             current_columns = connector.get_schema(table_name)
 
@@ -204,12 +202,7 @@ def _compute_diff(table_name: str, old_columns: list, new_columns: list, db: Ses
 
 
 def _trigger_schema_alert(table: str, diffs: list, channel: str, db: Session):
-    """Dispatch a schema drift alert."""
-    from datetime import timedelta
-
-    from alerts.base import get_alert_dispatcher
-    from backend.models import AlertLog
-
+    """Dispatch a schema drift alert using routing rules from kit.yml."""
     # Deduplication: skip if same table+type was alerted in the last 60 minutes
     recent = db.query(AlertLog).filter(
         AlertLog.table_name == table,
@@ -236,8 +229,12 @@ def _trigger_schema_alert(table: str, diffs: list, channel: str, db: Session):
     )
     success = False
     try:
-        dispatcher = get_alert_dispatcher(channel)
-        dispatcher.send(message)
+        dispatch_alert(
+            alert_type="schema",
+            table_name=table,
+            subject=f"⚠️ Schema Drift: {table}",
+            message=message,
+        )
         success = True
     except Exception as e:
         logger.error(f"Failed to send schema drift alert: {e}")
