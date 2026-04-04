@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from backend.models import CheckResult, VolumeRecord, get_db
 from alerts.base import dispatch_alert, get_lineage_impact
+from config.loader import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,14 @@ volume_gauge = Gauge(
     "Row count for monitored tables",
     ["table", "dag"],
 )
+
+volume_deviation_gauge = Gauge(
+    "observakit_volume_deviation_pct",
+    "Volume deviation fraction from rolling average",
+    ["table", "dag"],
+)
+
+MIN_HISTORY_FOR_ANOMALY = 3  # Require at least this many past records before firing anomaly
 
 
 @router.get("/results")
@@ -120,14 +129,12 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
     """
     Trigger quality checks using configured engine (Soda Core or GX).
     """
-    import yaml
     import glob
     import os
     from connectors.base import get_warehouse_connector
 
     try:
-        with open("config/kit.yml", "r") as f:
-            config = yaml.safe_load(f)
+        config = load_config("config/kit.yml")
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="config/kit.yml not found")
 
@@ -213,16 +220,25 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
             })
 
             if not passed and not dry_run:
-                # Trigger lineage-aware alert
-                downstream = get_lineage_impact(table)
-                impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
-                
-                dispatch_alert(
-                    alert_type="quality",
-                    table_name=table,
-                    subject=f"❌ Quality Check Failed: {name}",
-                    message=f"Table: {table}\nCheck: {name}\nResult: {result_value}\nAssertion: {assertion}{impact_msg}"
-                )
+                # Check active suppressions
+                from backend.models import CheckSuppression
+                suppression = db.query(CheckSuppression).filter(
+                    CheckSuppression.table_name == table,
+                    CheckSuppression.suppressed_until >= datetime.now(timezone.utc),
+                ).first()
+                if suppression:
+                    logger.info(f"Alert suppressed for {table} — reason: {suppression.reason}")
+                else:
+                    # Trigger lineage-aware alert
+                    downstream = get_lineage_impact(table)
+                    impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
+
+                    dispatch_alert(
+                        alert_type="quality",
+                        table_name=table,
+                        subject=f"❌ Quality Check Failed: {name}",
+                        message=f"Table: {table}\nCheck: {name}\nResult: {result_value}\nAssertion: {assertion}{impact_msg}"
+                    )
 
         except Exception as e:
             logger.error(f"Error running custom SQL check {check_cfg.get('name')}: {e}")
@@ -282,16 +298,14 @@ def _run_gx_check(check_file: str, connector) -> list[dict]:
 
 
 @router.post("/volume")
-def run_volume_checks(db: Session = Depends(get_db)):
+def run_volume_checks(db: Session = Depends(get_db), connector=None):
     """
     Run volume anomaly detection.
-    Queries current row counts, compares against 7-day rolling average using Z-score.
+    Queries current row counts, compares against 7-day rolling average.
+    Accepts an optional pre-built connector for connection reuse from scheduler.
     """
-    import yaml
-
     try:
-        with open("config/kit.yml", "r") as f:
-            config = yaml.safe_load(f)
+        config = load_config("config/kit.yml")
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="config/kit.yml not found")
 
@@ -311,13 +325,24 @@ def run_volume_checks(db: Session = Depends(get_db)):
         try:
             from connectors.base import get_warehouse_connector
 
-            connector = get_warehouse_connector()
-            current_count = connector.get_row_count(table_name)
+            _connector = connector or get_warehouse_connector()
+            current_count = _connector.get_row_count(table_name)
 
             # Calculate rolling average from stored history
             from datetime import timedelta
 
             cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
+
+            # Count history records to enforce minimum guard
+            history_count = (
+                db.query(func.count(VolumeRecord.id))
+                .filter(
+                    VolumeRecord.table_name == table_name,
+                    VolumeRecord.recorded_at >= cutoff,
+                )
+                .scalar()
+            )
+
             avg_result = (
                 db.query(func.avg(VolumeRecord.row_count))
                 .filter(
@@ -329,7 +354,10 @@ def run_volume_checks(db: Session = Depends(get_db)):
 
             rolling_avg = float(avg_result) if avg_result else float(current_count)
             deviation = abs(current_count - rolling_avg) / rolling_avg if rolling_avg > 0 else 0
-            is_anomaly = deviation > threshold
+
+            # Only flag anomaly if we have enough history
+            sufficient_history = history_count >= MIN_HISTORY_FOR_ANOMALY
+            is_anomaly = sufficient_history and deviation > threshold
 
             # Store record
             record = VolumeRecord(
@@ -342,8 +370,9 @@ def run_volume_checks(db: Session = Depends(get_db)):
             )
             db.add(record)
 
-            # Update Prometheus gauge
+            # Update Prometheus gauges
             volume_gauge.labels(table=table_name, dag=dag_id).set(current_count)
+            volume_deviation_gauge.labels(table=table_name, dag=dag_id).set(deviation)
 
             result = {
                 "table": table_name,
@@ -351,6 +380,7 @@ def run_volume_checks(db: Session = Depends(get_db)):
                 "rolling_avg": round(rolling_avg, 1),
                 "deviation_pct": round(deviation * 100, 1),
                 "is_anomaly": is_anomaly,
+                "history_points": history_count,
             }
             results.append(result)
 

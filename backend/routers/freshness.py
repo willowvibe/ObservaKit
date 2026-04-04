@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.auth import verify_api_key
 from backend.models import AlertLog, FreshnessRecord, get_db
+from config.loader import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -72,16 +73,15 @@ def list_freshness(
 
 
 @router.post("/poll", dependencies=[Depends(verify_api_key)])
-def poll_freshness(db: Session = Depends(get_db)):
+def poll_freshness(db: Session = Depends(get_db), connector=None):
     """
     Trigger a freshness check for all configured tables.
     Reads config from kit.yml, queries the warehouse, and stores results.
+    Accepts an optional pre-built connector for connection reuse from scheduler.
     """
-    import yaml
 
     try:
-        with open("config/kit.yml", "r") as f:
-            config = yaml.safe_load(f)
+        config = load_config("config/kit.yml")
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="config/kit.yml not found")
 
@@ -102,8 +102,8 @@ def poll_freshness(db: Session = Depends(get_db)):
         try:
             from connectors.base import get_warehouse_connector
 
-            connector = get_warehouse_connector()
-            last_updated = connector.get_max_timestamp(table_name, ts_col)
+            _connector = connector or get_warehouse_connector()
+            last_updated = _connector.get_max_timestamp(table_name, ts_col)
 
             now = datetime.now(timezone.utc)
             lag_seconds = (now - last_updated).total_seconds() if last_updated else None
@@ -163,8 +163,7 @@ def _parse_duration(duration_str: str) -> float:
 def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db: Session):
     """Dispatch a freshness alert with deduplication via AlertLog."""
     from datetime import timedelta
-
-    from alerts.base import get_alert_dispatcher
+    from alerts.base import dispatch_alert
 
     # Deduplication: skip if same table+type was alerted in the last 60 minutes
     recent = db.query(AlertLog).filter(
@@ -176,6 +175,16 @@ def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db
         logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
         return
 
+    # Check active suppressions
+    from backend.models import CheckSuppression
+    suppression = db.query(CheckSuppression).filter(
+        CheckSuppression.table_name == table,
+        CheckSuppression.suppressed_until >= datetime.now(timezone.utc),
+    ).first()
+    if suppression:
+        logger.info(f"Alert suppressed for {table} until {suppression.suppressed_until} — reason: {suppression.reason}")
+        return
+
     message = (
         f"{'🔴' if status == 'fail' else '🟡'} Freshness Alert: {table}\n"
         f"  Lag: {lag_seconds / 3600:.1f} hours\n"
@@ -184,8 +193,12 @@ def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db
     )
     success = False
     try:
-        dispatcher = get_alert_dispatcher(channel)
-        dispatcher.send(message)
+        dispatch_alert(
+            alert_type="freshness",
+            table_name=table,
+            subject=f"{'🔴' if status == 'fail' else '🟡'} Freshness: {table} is {status}",
+            message=message,
+        )
         success = True
     except Exception as e:
         logger.error(f"Failed to send freshness alert: {e}")

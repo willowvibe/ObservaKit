@@ -45,7 +45,6 @@ class PostgresConnector(WarehouseConnector):
         conn = self.connect()
         try:
             with conn.cursor() as cur:
-                # Use proper quoting to prevent SQL injection
                 cur.execute(
                     f"SELECT MAX({column}) FROM {table}"
                 )
@@ -55,8 +54,6 @@ class PostgresConnector(WarehouseConnector):
             logger.error(f"Error getting max timestamp for {table}.{column}: {e}")
             conn.rollback()
             raise
-        finally:
-            self.close()
 
     def get_row_count(self, table: str) -> int:
         """Get the current row count of a table."""
@@ -70,8 +67,6 @@ class PostgresConnector(WarehouseConnector):
             logger.error(f"Error getting row count for {table}: {e}")
             conn.rollback()
             raise
-        finally:
-            self.close()
 
     def get_schema(self, table: str) -> list[dict]:
         """
@@ -104,8 +99,6 @@ class PostgresConnector(WarehouseConnector):
             logger.error(f"Error getting schema for {table}: {e}")
             conn.rollback()
             raise
-        finally:
-            self.close()
 
     def execute_query(self, query: str, params: dict = None) -> list[dict]:
         """Execute a raw SQL query and return results as dicts."""
@@ -118,8 +111,6 @@ class PostgresConnector(WarehouseConnector):
             logger.error(f"Error executing query: {e}")
             conn.rollback()
             raise
-        finally:
-            self.close()
 
     def get_soda_config(self) -> dict:
         """Return configuration for Soda Core."""

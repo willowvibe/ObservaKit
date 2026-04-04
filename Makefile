@@ -41,3 +41,7 @@ clean: ## Remove build artifacts and caches
 
 dev: ## Run backend in dev mode
 	PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
+
+demo: ## Seed the database with mock data and run a demo
+	PYTHONPATH=. python3 scripts/generate_mock_data.py
+	@echo "✅ Mock data loaded. Run 'make dev' to start the server."

@@ -21,12 +21,15 @@ def _run_freshness_checks():
     try:
         from backend.models import SessionLocal
         from backend.routers.freshness import poll_freshness
+        from connectors.base import get_warehouse_connector
 
+        connector = get_warehouse_connector()
         db = SessionLocal()
         try:
-            poll_freshness(db=db)
+            poll_freshness(db=db, connector=connector)
         finally:
             db.close()
+            connector.close()
     except Exception as e:
         logger.error(f"Freshness check failed: {e}")
 
@@ -37,12 +40,15 @@ def _run_volume_checks():
     try:
         from backend.models import SessionLocal
         from backend.routers.checks import run_volume_checks
+        from connectors.base import get_warehouse_connector
 
+        connector = get_warehouse_connector()
         db = SessionLocal()
         try:
-            run_volume_checks(db=db)
+            run_volume_checks(db=db, connector=connector)
         finally:
             db.close()
+            connector.close()
     except Exception as e:
         logger.error(f"Volume check failed: {e}")
 

@@ -7,11 +7,13 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Column,
     DateTime,
     Float,
     Integer,
+    Numeric,
     String,
     Text,
     create_engine,
@@ -75,7 +77,7 @@ class VolumeRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     table_name = Column(String(255), nullable=False, index=True)
     dag_id = Column(String(255), nullable=True)
-    row_count = Column(Integer, nullable=False)
+    row_count = Column(BigInteger, nullable=False)  # BigInteger supports tables with billions of rows
     rolling_avg = Column(Float, nullable=True)
     deviation_pct = Column(Float, nullable=True)
     is_anomaly = Column(Boolean, default=False)
@@ -90,9 +92,9 @@ class CheckResult(Base):
     id = Column(Integer, primary_key=True, index=True)
     check_name = Column(String(255), nullable=False)
     table_name = Column(String(255), nullable=False, index=True)
-    check_type = Column(String(100), nullable=False)  # soda | great_expectations
+    check_type = Column(String(100), nullable=False)  # soda | great_expectations | custom_sql
     passed = Column(Boolean, nullable=False)
-    metric_value = Column(Float, nullable=True)
+    metric_value = Column(Numeric(precision=20, scale=6), nullable=True)  # Numeric avoids float precision loss
     details = Column(Text, nullable=True)
     executed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -144,13 +146,25 @@ class ColumnProfile(Base):
     id = Column(Integer, primary_key=True, index=True)
     table_name = Column(String(255), nullable=False, index=True)
     column_name = Column(String(255), nullable=False)
-    null_count = Column(Integer)
+    null_count = Column(BigInteger)  # BigInteger for large tables
     null_pct = Column(Float)
-    distinct_count = Column(Integer)
+    distinct_count = Column(BigInteger)  # BigInteger for large tables
     min_value = Column(String(255))  # stored as string for type flexibility
     max_value = Column(String(255))
     mean_value = Column(Float, nullable=True)
     profiled_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class CheckSuppression(Base):
+    """Mutes alerts for a specific table during planned maintenance windows."""
+
+    __tablename__ = "check_suppressions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    suppressed_until = Column(DateTime, nullable=False)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class PipelineRun(Base):

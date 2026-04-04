@@ -18,8 +18,17 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Try to get DB URL from environment, or use hardcoded default for simple execution
-DATABASE_URL = os.getenv("METADATA_DB_URL", "postgresql://observakit:changeme@localhost:5433/observakit")
+# Build DATABASE_URL from the same env vars the backend uses, so this
+# script works both from the host and inside the Docker network.
+_db_user = os.getenv("METADATA_DB_USER", "observakit")
+_db_pass = os.getenv("METADATA_DB_PASSWORD", "changeme")
+_db_host = os.getenv("METADATA_DB_HOST", "postgres")   # Docker service name, not localhost
+_db_port = os.getenv("METADATA_DB_PORT", "5432")
+_db_name = os.getenv("METADATA_DB_NAME", "observakit")
+DATABASE_URL = os.getenv(
+    "METADATA_DB_URL",
+    f"postgresql://{_db_user}:{_db_pass}@{_db_host}:{_db_port}/{_db_name}",
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
