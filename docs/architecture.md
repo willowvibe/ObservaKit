@@ -2,7 +2,7 @@
 
 ## Overview
 
-ObservaKit is a self-hosted data observability layer built on open-source tools. It provides 5 core observability pillars for small data teams without requiring paid platforms.
+ObservaKit is a self-hosted data observability layer built on open-source tools. It provides 7 core observability pillars for small data teams without requiring paid platforms.
 
 ## System Architecture
 
@@ -23,6 +23,8 @@ flowchart TD
         F[Schema Diff Engine]
         G[Volume Anomaly Detector]
         H[Freshness Poller]
+        P[Distribution Drift Monitor]
+        Q[Data Contracts Validator]
     end
 
     subgraph Quality
@@ -37,13 +39,15 @@ flowchart TD
     end
 
     subgraph Alerts
-        N[Slack / Email / PagerDuty]
+        N[Slack / Email / Discord / Webhook]
     end
 
     A -- REST API / OTel --> K
     B -- SQL queries --> H
     B -- SQL queries --> G
     B -- information_schema --> F
+    B -- column stats --> P
+    B -- contract rules --> Q
     B -- check execution --> I
     J -- JSON artifacts --> D
     I -- results --> C
@@ -59,18 +63,28 @@ flowchart TD
 
 ### FastAPI Backend (`backend/`)
 The central service that:
-- Exposes REST API endpoints for all 5 pillars
+- Exposes REST API endpoints for all 7 pillars
 - Stores results in the metadata PostgreSQL database
 - Emits Prometheus metrics for Grafana dashboards
-- Dispatches alerts via Slack and email
+- Dispatches alerts via Slack, Email, Discord, and generic Webhook
 - Runs APScheduler for standalone mode (no Airflow dependency)
+
+The 7 observability pillars are:
+1. **Freshness** — table staleness vs SLA thresholds
+2. **Volume** — row count anomaly detection (Z-score, 7-day rolling avg)
+3. **Quality Checks** — Soda Core integration + custom SQL assertions
+4. **Schema Drift** — column additions, removals, and type changes
+5. **Pipeline Health** — Airflow/Prefect DAG run monitoring
+6. **Distribution Drift** — silent value-distribution shifts in columns
+7. **Data Contracts** — producer-defined schema + business rule validation
 
 ### Connectors (`connectors/`)
 Pluggable connectors follow abstract base classes:
-- **WarehouseConnector**: `get_max_timestamp()`, `get_row_count()`, `get_schema()`
+- **WarehouseConnector**: `get_max_timestamp()`, `get_row_count()`, `get_schema()`, `execute_query()`
 - **OrchestratorConnector**: `list_dags()`, `get_dag_runs()`, `get_task_instances()`
 
-Supported: PostgreSQL, BigQuery, Snowflake, Airflow, Prefect.
+Supported warehouses: PostgreSQL, BigQuery, Snowflake, MySQL/MariaDB, Redshift.
+Supported orchestrators: Airflow, Prefect.
 
 ### Observability Stack
 - **OpenTelemetry Collector** — receives OTLP from Airflow, exports to Prometheus
@@ -87,7 +101,7 @@ sequenceDiagram
     participant MetaDB as Metadata Postgres
     participant Prom as Prometheus
     participant Grafana
-    participant Slack
+    participant Alerts as Alert Channel (Slack/Discord/Webhook)
 
     Scheduler->>Backend: POST /freshness/poll
     Backend->>Warehouse: SELECT MAX(updated_at)
@@ -96,7 +110,7 @@ sequenceDiagram
     Backend->>Prom: Update gauge metric
     Prom-->>Grafana: Scrape metrics
     alt Lag exceeds threshold
-        Backend->>Slack: Send alert
+        Backend->>Alerts: dispatch_alert(type=freshness)
     end
 ```
 
@@ -197,5 +211,46 @@ erDiagram
         float metric_value
         float estimated_cost_usd
         datetime recorded_at
+    }
+    DistributionSnapshot {
+        int id PK
+        string table_name
+        string column_name
+        string column_type
+        json distribution
+        datetime snapshotted_at
+    }
+    DistributionDrift {
+        int id PK
+        string table_name
+        string column_name
+        string drift_type
+        string previous_value
+        string current_value
+        float change_magnitude
+        datetime detected_at
+    }
+    ContractValidationResult {
+        int id PK
+        string contract_id
+        string contract_version
+        string table_name
+        bool passed
+        int total_rules
+        int passed_rules
+        json violations_json
+        datetime validated_at
+    }
+    ColumnProfile {
+        int id PK
+        string table_name
+        string column_name
+        int null_count
+        float null_pct
+        int distinct_count
+        string min_value
+        string max_value
+        float mean_value
+        datetime profiled_at
     }
 ```

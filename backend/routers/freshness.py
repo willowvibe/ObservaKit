@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Gauge
 from sqlalchemy.orm import Session
 
+from alerts.base import dispatch_alert, is_alert_deduped, is_alert_suppressed
 from backend.auth import verify_api_key
 from backend.models import AlertLog, FreshnessRecord, get_db
 from config.loader import load_config
@@ -167,27 +168,9 @@ def _parse_duration(duration_str: str) -> float:
 
 def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db: Session):
     """Dispatch a freshness alert with deduplication via AlertLog."""
-    from datetime import timedelta
-    from alerts.base import dispatch_alert
-
-    # Deduplication: skip if same table+type was alerted in the last 60 minutes
-    recent = db.query(AlertLog).filter(
-        AlertLog.table_name == table,
-        AlertLog.alert_type == "freshness",
-        AlertLog.sent_at >= datetime.now(timezone.utc) - timedelta(minutes=60),
-    ).first()
-    if recent:
-        logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
+    if is_alert_deduped(db, table, "freshness"):
         return
-
-    # Check active suppressions
-    from backend.models import CheckSuppression
-    suppression = db.query(CheckSuppression).filter(
-        CheckSuppression.table_name == table,
-        CheckSuppression.suppressed_until >= datetime.now(timezone.utc),
-    ).first()
-    if suppression:
-        logger.info(f"Alert suppressed for {table} until {suppression.suppressed_until} — reason: {suppression.reason}")
+    if is_alert_suppressed(db, table):
         return
 
     lag_str = f"{lag_seconds / 3600:.1f} hours" if lag_seconds is not None else "unknown (no data found)"

@@ -4,19 +4,26 @@ Triggers Soda/GX checks, stores results, and runs volume anomaly detection.
 """
 
 import ast
+import glob
+import json
 import logging
 import operator
-from datetime import datetime, timezone
+import os
+import subprocess
+import tempfile
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Gauge
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models import CheckResult, VolumeRecord, get_db
-from alerts.base import dispatch_alert, get_lineage_impact
+from alerts.base import dispatch_alert, get_lineage_impact, is_alert_deduped, is_alert_suppressed
+from backend.models import AlertLog, CheckResult, CheckSuppression, VolumeRecord, get_db
 from config.loader import load_config
+from connectors.base import get_warehouse_connector
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +143,6 @@ def get_check_trends(
     Get quality check trends for a specific table:
     Pass rate over time, failure streaks, and average execution time.
     """
-    from datetime import timedelta
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     results = db.query(CheckResult).filter(
@@ -189,10 +195,6 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
     """
     Trigger quality checks using configured engine (Soda Core or GX).
     """
-    import glob
-    import os
-    from connectors.base import get_warehouse_connector
-
     try:
         config = load_config("config/kit.yml")
     except FileNotFoundError:
@@ -279,14 +281,8 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
             })
 
             if not passed and not dry_run:
-                # Check active suppressions
-                from backend.models import CheckSuppression
-                suppression = db.query(CheckSuppression).filter(
-                    CheckSuppression.table_name == table,
-                    CheckSuppression.suppressed_until >= datetime.now(timezone.utc),
-                ).first()
-                if suppression:
-                    logger.info(f"Alert suppressed for {table} — reason: {suppression.reason}")
+                if is_alert_suppressed(db, table):
+                    pass
                 else:
                     # Trigger lineage-aware alert
                     downstream = get_lineage_impact(table)
@@ -318,12 +314,6 @@ def _run_soda_check(check_file: str, connector) -> list[dict]:
     The Python API (scan.get_checks_fail()) accesses private attributes that
     change between Soda versions. The subprocess approach uses the public CLI contract.
     """
-    import json
-    import os
-    import subprocess
-    import tempfile
-    import yaml
-
     soda_config = connector.get_soda_config()
 
     # Write a temp datasource config file for this run
@@ -356,8 +346,6 @@ def _run_soda_check(check_file: str, connector) -> list[dict]:
 
 def _parse_soda_json_output(stdout: str, returncode: int, check_file: str) -> list[dict]:
     """Parse Soda's --json-output into ObservaKit check result dicts."""
-    import json
-
     results = []
     try:
         # Soda prints one JSON object per line in some versions, or a single array
@@ -436,14 +424,10 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
         threshold = table_cfg.get("anomaly_threshold", 0.3)
 
         try:
-            from connectors.base import get_warehouse_connector
-
             _connector = connector or get_warehouse_connector()
             current_count = _connector.get_row_count(table_name)
 
             # Calculate rolling average from stored history
-            from datetime import timedelta
-
             cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
 
             # Count history records to enforce minimum guard
@@ -519,19 +503,7 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
 
 def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, channel: str, db: Session):
     """Dispatch a volume anomaly alert."""
-    from datetime import timedelta
-
-    from alerts.base import get_alert_dispatcher
-    from backend.models import AlertLog
-
-    # Deduplication: skip if same table+type was alerted in the last 60 minutes
-    recent = db.query(AlertLog).filter(
-        AlertLog.table_name == table,
-        AlertLog.alert_type == "volume",
-        AlertLog.sent_at >= datetime.now(timezone.utc) - timedelta(minutes=60),
-    ).first()
-    if recent:
-        logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
+    if is_alert_deduped(db, table, "volume"):
         return
 
     downstream = get_lineage_impact(table)
