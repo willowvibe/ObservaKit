@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ObservaKit</title>
+  <!--
+    SPA redirect for GitHub Pages — based on https://github.com/rafgraph/spa-github-pages
+    When GitHub Pages returns a 404, this page encodes the path in the URL and
+    redirects to the repo root so the SPA router can handle navigation.
+    pathSegmentsToKeep = 1 keeps the first path segment (/ObservaKit) in the URL.
+  -->
+  <script>
+    var pathSegmentsToKeep = 1;
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.host +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body></body>
+</html>

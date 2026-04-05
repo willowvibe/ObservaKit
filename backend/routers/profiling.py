@@ -99,4 +99,15 @@ def get_latest_profile(table_name: str, db: Session = Depends(get_db)):
         ColumnProfile.profiled_at == latest_run[0]
     ).all()
 
-    return records
+    return [
+        {
+            "column": r.column_name,
+            "null_pct": round(r.null_pct * 100, 2) if r.null_pct is not None else None,
+            "distinct_count": r.distinct_count,
+            "min_value": r.min_value,
+            "max_value": r.max_value,
+            "mean_value": r.mean_value,
+            "profiled_at": r.profiled_at.isoformat(),
+        }
+        for r in records
+    ]

@@ -8,13 +8,43 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from backend.models import PipelineRun, get_db
+from backend.models import AlertLog, PipelineRun, get_db
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/airflow")
+def get_airflow_logs(limit: int = 50, db: Session = Depends(get_db)):
+    """
+    Return recent Airflow pipeline run events so the Dashboard Alerts tab
+    can display them without requiring a separate AlertLog query.
+    Returns shape: { "logs": [...] }
+    """
+    runs = (
+        db.query(PipelineRun)
+        .filter(PipelineRun.orchestrator == "airflow")
+        .order_by(PipelineRun.recorded_at.desc())
+        .limit(limit)
+        .all()
+    )
+    logs = [
+        {
+            "dag_id": r.dag_id,
+            "run_id": r.run_id,
+            "state": r.state,
+            "start_time": r.start_time.isoformat() if r.start_time else None,
+            "end_time": r.end_time.isoformat() if r.end_time else None,
+            "duration_seconds": r.duration_seconds,
+            "received_at": r.recorded_at.isoformat(),
+        }
+        for r in runs
+    ]
+    return {"logs": logs}
 
 
 @router.post("/airflow")
@@ -34,7 +64,7 @@ async def airflow_webhook(request: Request, db: Session = Depends(get_db)):
     try:
         payload = await request.json()
     except Exception:
-        return {"error": "Invalid JSON payload"}, 400
+        return JSONResponse(status_code=400, content={"error": "Invalid JSON payload"})
 
     run = PipelineRun(
         orchestrator="airflow",
@@ -69,7 +99,7 @@ async def prefect_webhook(request: Request, db: Session = Depends(get_db)):
     try:
         payload = await request.json()
     except Exception:
-        return {"error": "Invalid JSON payload"}, 400
+        return JSONResponse(status_code=400, content={"error": "Invalid JSON payload"})
 
     # Normalize Prefect state names
     state_map = {"Completed": "success", "Failed": "failed", "Running": "running"}
@@ -133,3 +163,4 @@ def _parse_datetime(dt_str: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
         return None
+

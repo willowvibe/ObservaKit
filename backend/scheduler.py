@@ -94,7 +94,7 @@ def _run_finops_checks():
 
         db = SessionLocal()
         try:
-           # Defaulting to 7 days for the scheduled check
+            # Defaulting to 7 days for the scheduled check
             poll_finops_costs(days=7, db=db)
         finally:
             db.close()
