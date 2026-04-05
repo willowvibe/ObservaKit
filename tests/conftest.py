@@ -14,7 +14,7 @@ from backend.models import Base
 @pytest.fixture
 def db_session():
     """Create an in-memory SQLite database session for testing."""
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(bind=engine)
     TestSession = sessionmaker(bind=engine)
     session = TestSession()
@@ -39,6 +39,8 @@ def mock_postgres_connector():
             "ordinal_position": 4,
         },
     ]
+    # execute_query returns zero-count by default; override per test as needed
+    connector.execute_query.return_value = [{"cnt": 0}]
     return connector
 
 
@@ -60,6 +62,40 @@ def mock_airflow_connector():
         },
     ]
     return connector
+
+
+@pytest.fixture
+def fake_alert_dispatcher():
+    """
+    A fake alert dispatcher that captures sent messages without making HTTP calls.
+
+    Usage::
+
+        def test_something(fake_alert_dispatcher, monkeypatch):
+            monkeypatch.setattr("alerts.base.get_alert_dispatcher",
+                                lambda *args, **kwargs: fake_alert_dispatcher)
+            # ... trigger code that calls dispatch_alert ...
+            assert len(fake_alert_dispatcher.sent) == 1
+            assert "stale" in fake_alert_dispatcher.sent[0]["message"]
+    """
+
+    class FakeDispatcher:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, message, subject=None, alert_type=None, table_name=None, **kwargs):
+            self.sent.append(
+                {
+                    "message": message,
+                    "subject": subject,
+                    "alert_type": alert_type,
+                    "table_name": table_name,
+                    **kwargs,
+                }
+            )
+            return True
+
+    return FakeDispatcher()
 
 
 @pytest.fixture

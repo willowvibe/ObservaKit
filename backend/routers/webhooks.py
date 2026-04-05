@@ -12,10 +12,24 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from backend.models import AlertLog, PipelineRun, get_db
+from config.loader import load_config
+from alerts.slack import SlackDispatcher
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.post("/test-alert")
+def trigger_test_alert():
+    """Trigger a generic test alert to verify webhook configuration."""
+    config = load_config()
+    dispatcher = SlackDispatcher(config)
+    success = dispatcher.send("🔔 *ObservaKit Test Alert*\nIf you are seeing this, your Slack integration is working perfectly!")
+    if success:
+        return {"status": "success", "message": "Test alert dispatched."}
+    else:
+        return {"status": "error", "message": "Failed to dispatch test alert."}
 
 
 @router.get("/airflow")

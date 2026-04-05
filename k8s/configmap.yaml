@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observakit-config
+  labels:
+    app: observakit
+data:
+  kit.yml: |
+    # ObservaKit Global Configuration
+    alerts:
+      default_channel: slack
+    
+    warehouse:
+      type: postgres
+      
+    # Basic Checks
+    freshness:
+      enabled: true
+      schedule_minutes: 15
+      tables:
+        - table: "public.orders"
+          timestamp_column: "updated_at"
+          warn_after: "2h"
+          fail_after: "4h"
+
+    volume:
+      enabled: true
+      rolling_window_days: 7
+      tables:
+        - table: "public.orders"
+          anomaly_threshold: 0.15
+          alert: slack

@@ -54,6 +54,36 @@ def get_db():
 # Models
 # =============================================================================
 
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
+
+class Project(Base):
+    """A logical grouping of checks, integrations, and alerts."""
+
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    api_keys = relationship("ApiKey", back_populates="project", cascade="all, delete-orphan")
+
+
+class ApiKey(Base):
+    """Database-backed API keys providing RBAC per project."""
+
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    # Store hashed keys, not plain text, for security
+    hashed_key = Column(String(255), unique=True, nullable=False)
+    role = Column(String(20), default="viewer", nullable=False)  # 'admin' or 'viewer'
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    is_active = Column(Boolean, default=True)
+
+    project = relationship("Project", back_populates="api_keys")
+
 
 class FreshnessRecord(Base):
     """Tracks freshness lag for monitored tables."""
