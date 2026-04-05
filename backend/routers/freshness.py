@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from alerts.base import dispatch_alert
 from backend.auth import verify_api_key
-from backend.models import AlertLog, FreshnessRecord, get_db
+from backend.models import FreshnessRecord, get_db
 from config.loader import load_config
 
 logger = logging.getLogger(__name__)

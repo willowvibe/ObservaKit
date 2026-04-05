@@ -6,7 +6,8 @@ ObservaKit ships with pre-built quality check templates for both **Soda Core** a
 
 1. Copy a template from `checks/templates/soda/` to `checks/my_project/`
 2. Edit the YAML to point to your table and columns
-3. Checks will run automatically on the configured schedule
+3. Validate your configuration: `observakit validate-config`
+4. Checks will run automatically on the configured schedule
 
 ## Soda Core Checks
 

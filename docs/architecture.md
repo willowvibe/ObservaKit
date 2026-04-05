@@ -13,7 +13,7 @@ flowchart TD
     end
 
     subgraph Warehouse
-        B[(PostgreSQL / BigQuery / Snowflake)]
+        B[(PostgreSQL / BigQuery / Snowflake\nMySQL / Redshift / DuckDB / Trino\nDatabricks)]
     end
 
     subgraph Kit - Backend
@@ -39,7 +39,7 @@ flowchart TD
     end
 
     subgraph Alerts
-        N[Slack / Email / Discord / Webhook]
+        N[Slack / MS Teams / PagerDuty / Email / Discord / Webhook]
     end
 
     A -- REST API / OTel --> K
@@ -66,8 +66,10 @@ The central service that:
 - Exposes REST API endpoints for all 7 pillars
 - Stores results in the metadata PostgreSQL database
 - Emits Prometheus metrics for Grafana dashboards
-- Dispatches alerts via Slack, Email, Discord, and generic Webhook
+- Dispatches alerts via **Slack** (Block Kit), **MS Teams**, **PagerDuty** (Native), **Email**, **Discord**, and **Generic Webhook**
 - Runs APScheduler for standalone mode (no Airflow dependency)
+- [x] **Automatic Query Retries**: Implements exponential backoff for all warehouse operations.
+- [x] **Alert Auditing**: Centralized `AlertLog` for all dispatched notifications.
 
 The 7 observability pillars are:
 1. **Freshness** — table staleness vs SLA thresholds
@@ -83,7 +85,7 @@ Pluggable connectors follow abstract base classes:
 - **WarehouseConnector**: `get_max_timestamp()`, `get_row_count()`, `get_schema()`, `execute_query()`
 - **OrchestratorConnector**: `list_dags()`, `get_dag_runs()`, `get_task_instances()`
 
-Supported warehouses: PostgreSQL, BigQuery, Snowflake, MySQL/MariaDB, Redshift.
+Supported warehouses: PostgreSQL, BigQuery, Snowflake, MySQL/MariaDB, Amazon Redshift, **DuckDB**, **Databricks**, **Trino / Presto**.
 Supported orchestrators: Airflow, Prefect.
 
 ### Observability Stack
@@ -101,7 +103,7 @@ sequenceDiagram
     participant MetaDB as Metadata Postgres
     participant Prom as Prometheus
     participant Grafana
-    participant Alerts as Alert Channel (Slack/Discord/Webhook)
+    participant Alerts as Alert Channel (Slack/Teams/PagerDuty/Discord/Webhook)
 
     Scheduler->>Backend: POST /freshness/poll
     Backend->>Warehouse: SELECT MAX(updated_at)

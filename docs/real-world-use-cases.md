@@ -11,9 +11,10 @@ How real data teams use ObservaKit to solve production problems.
 **How ObservaKit helps:**
 
 1. Connect ObservaKit to **both** the source (Postgres) and destination (Snowflake) — run two instances.
-2. Enable **Volume monitoring** on both with the same table list.
-3. Enable **Schema Drift** on both.
-4. After each migration batch, call `POST /schema/snapshot` and `POST /checks/volume` on both instances and compare the results via `GET /status`.
+2. **Local Audit Snapshots**: Alternatively, use the **DuckDB** connector to pull a local snapshot of your production data for zero-latency schema and volume comparisons during the migration window.
+3. Enable **Volume monitoring** on both with the same table list.
+4. Enable **Schema Drift** on both.
+5. After each migration batch, call `POST /schema/snapshot` and `POST /checks/volume` on both instances and compare the results via `GET /status`.
 
 **What it catches in practice:**
 - `TIMESTAMP WITH TIME ZONE` → `TIMESTAMP_NTZ` conversion silently dropping timezone info

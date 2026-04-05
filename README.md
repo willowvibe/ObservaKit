@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/github/stars/willowvibe/ObservaKit?style=flat-square" />
   <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" />
   <img src="https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white" />
-  <img src="https://img.shields.io/badge/version-0.1.7-green?style=flat-square" />
+  <img src="https://img.shields.io/badge/version-0.1.10-green?style=flat-square" />
 </p>
 
 <p align="center">
@@ -63,8 +63,9 @@
 | Snowflake | ✅ Supported |
 | MySQL / MariaDB | ✅ Supported |
 | Amazon Redshift | ✅ Supported |
-| DuckDB | 🗓️ Planned (v0.2.0) |
-| Databricks | 🗓️ Planned |
+| DuckDB | ✅ Supported |
+| Databricks | ✅ Supported |
+| Trino / Presto | ✅ Supported |
 
 ## Supported Alert Channels
 
@@ -74,8 +75,8 @@
 | Email (SMTP) | ✅ Supported |
 | Discord | ✅ Supported |
 | Generic Webhook | ✅ Supported (PagerDuty, Opsgenie, n8n, etc.) |
-| Microsoft Teams | 🗓️ Planned (v0.3.0) |
-| PagerDuty native | 🗓️ Planned (v0.3.0) |
+| Microsoft Teams | ✅ Supported |
+| PagerDuty native | ✅ Supported |
 
 ## Quickstart (under 10 minutes)
 
@@ -216,10 +217,14 @@ ObservaKit snapshots distributions on a schedule and compares them. A Slack aler
 ```bash
 pip install -e .
 
-observakit status             # full health summary
-observakit check              # run quality checks now
+observakit status             # full health summary (supports --output json)
+observakit check              # run quality checks (supports --output json)
 observakit profile            # profile all configured tables
 observakit suppress orders 4h # mute alerts for 4 hours (planned maintenance)
+observakit validate-config    # dry-run parse kit.yml (no warehouse needed)
+observakit diff               # compare schema snapshot vs saved version
+observakit init               # interactive setup wizard
+observakit test-alert         # fire a manual test notification
 ```
 
 ## Architecture
@@ -258,10 +263,12 @@ flowchart TD
     end
 
     subgraph Alerts
-        SL[Slack]
+        SL[Slack (Block Kit)]
         EM[Email]
         DI[Discord]
-        WH[Generic Webhook\nPagerDuty / Opsgenie]
+        WH[Generic Webhook]
+        MS[MS Teams]
+        PD[PagerDuty]
     end
 
     W --> F & V & Q & SD & DD & DC & P
@@ -297,13 +304,18 @@ ObservaKit/
 │   ├── postgres.py              ← PostgreSQL
 │   ├── bigquery.py              ← BigQuery
 │   ├── snowflake.py             ← Snowflake
-│   ├── mysql.py                 ← MySQL / MariaDB (NEW)
-│   └── redshift.py              ← Amazon Redshift (NEW)
+│   ├── mysql.py                 ← MySQL / MariaDB
+│   ├── redshift.py              ← Amazon Redshift
+│   ├── duckdb.py                ← DuckDB (NEW)
+│   ├── databricks.py            ← Databricks (NEW)
+│   └── trino.py                 ← Trino (NEW)
 ├── alerts/
-│   ├── slack.py                 ← Slack webhooks
+│   ├── slack.py                 ← Slack (Block Kit + Retries)
 │   ├── email.py                 ← SMTP email
-│   ├── discord.py               ← Discord webhooks (NEW)
-│   └── webhook.py               ← Generic outgoing webhook (NEW)
+│   ├── discord.py               ← Discord webhooks
+│   ├── teams.py                 ← MS Teams (NEW)
+│   ├── pagerduty.py             ← PagerDuty Native (NEW)
+│   └── webhook.py               ← Generic outgoing webhook
 ├── config/
 │   ├── kit.yml                  ← Master config (all pillars)
 │   ├── contracts/               ← Data contract YAML files (NEW)

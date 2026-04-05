@@ -12,13 +12,14 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     Integer,
     Numeric,
     String,
     Text,
     create_engine,
 )
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 # ---- Database Connection ----
 DB_TYPE = os.getenv("METADATA_DB_TYPE", "postgresql").lower()
@@ -50,12 +51,10 @@ def get_db():
         db.close()
 
 
+
 # =============================================================================
 # Models
 # =============================================================================
-
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
 
 class Project(Base):
     """A logical grouping of checks, integrations, and alerts."""

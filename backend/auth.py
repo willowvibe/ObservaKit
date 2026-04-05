@@ -8,11 +8,11 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import HTTPException, Security, Request, Depends
+from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session
 
-from backend.models import get_db, ApiKey, Project
+from backend.models import ApiKey, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ async def verify_api_key(
 
     if api_key:
         hashed = hashlib.sha256(api_key.encode()).hexdigest()
-        db_key = db.query(ApiKey).filter(ApiKey.hashed_key == hashed, ApiKey.is_active == True).first()
+        db_key = db.query(ApiKey).filter(ApiKey.hashed_key == hashed, ApiKey.is_active).first()
         if db_key:
             request.state.user_role = db_key.role
             request.state.project_id = db_key.project_id

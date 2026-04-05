@@ -1,6 +1,6 @@
 # Alerting Setup Guide
 
-ObservaKit supports four alert channels out of the box: **Slack**, **Email (SMTP)**, **Discord**, and a generic **Webhook** (compatible with PagerDuty, Opsgenie, n8n, and any HTTP receiver).
+ObservaKit supports six alert channels out of the box: **Slack**, **Microsoft Teams**, **PagerDuty (Native)**, **Email (SMTP)**, **Discord**, and a generic **Webhook**.
 
 All channels are configured through routing rules in `config/kit.yml` and resolved at runtime using the `dispatch_alert()` function. Each rule can match on `alert_type` and/or a `table_pattern` glob, with a fallback to `default_channel` when no rule matches.
 
@@ -24,7 +24,10 @@ Add to your `.env` file:
 ```bash
 SLACK_WEBHOOK_URL=<your-slack-webhook-url>
 SLACK_CHANNEL=#data-alerts
+OBSERVAKIT_DASHBOARD_URL=http://your-observakit-domain.com
 ```
+
+ObservaKit uses **Slack Block Kit** to send rich, actionable alerts. Status is colour-coded (Red for Critical, Yellow for Warning) and includes a direct link to the affected table in the dashboard.
 
 Or configure routing in `config/kit.yml`:
 
@@ -48,6 +51,63 @@ alerts:
 ```bash
 curl -X POST http://localhost:8000/freshness/poll \
   -H "X-API-Key: $OBSERVAKIT_API_KEY"
+```
+
+---
+
+## Microsoft Teams
+
+ObservaKit sends rich **Adaptive Cards** to Microsoft Teams, featuring layout-specific status blocks and deep links to the dashboard.
+
+### 1. Create a Teams Incoming Webhook
+
+1. Open your Teams channel → **Workflows** (or Connectors) → **Incoming Webhook**
+2. Name it `ObservaKit` and copy the URL
+
+### 2. Configure ObservaKit
+
+Add to your `.env` file:
+
+```bash
+TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/XXXXXXXX/XXXXXXXX
+```
+
+### 3. Route Alerts to Teams
+
+In `config/kit.yml`:
+
+```yaml
+alerts:
+  routing:
+    - match:
+        alert_type: freshness
+      channel: teams
+```
+
+---
+
+## PagerDuty (Native)
+
+While you can use the generic Webhook for PagerDuty, the native integration uses the **Events API v2** for better event deduplication and incident grouping.
+
+### 1. Configure PagerDuty
+
+Add to your `.env` file:
+
+```bash
+PAGERDUTY_ROUTING_KEY=your-pagerduty-integration-key
+```
+
+### 2. Route Alerts
+
+In `config/kit.yml`:
+
+```yaml
+alerts:
+  routing:
+    - match:
+        alert_type: quality
+      channel: pagerduty
 ```
 
 ---
@@ -128,7 +188,7 @@ The generic webhook channel posts a signed JSON payload to any HTTP endpoint.
 ```json
 {
   "source": "observakit",
-  "version": "0.1.7",
+  "version": "0.1.10",
   "alert_type": "volume",
   "table_name": "public.orders",
   "subject": "🔴 Volume Anomaly: public.orders",

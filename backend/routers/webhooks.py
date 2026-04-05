@@ -11,9 +11,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from backend.models import AlertLog, PipelineRun, get_db
-from config.loader import load_config
 from alerts.slack import SlackDispatcher
+from backend.models import PipelineRun, get_db
 
 logger = logging.getLogger(__name__)
 
