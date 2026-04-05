@@ -40,12 +40,19 @@ def get_alert_dispatcher(channel: str, **kwargs) -> AlertDispatcher:
         )
 
 
-def dispatch_alert(alert_type: str, message: str, table_name: str = None, subject: str = None):
+def dispatch_alert(alert_type: str, message: str, table_name: str = None, subject: str = None, db=None, severity: str = "fail"):
     """
     Dispatch an alert using routing rules from kit.yml.
     Uses load_config() so that ${VAR:-default} env vars are properly expanded.
     """
     import re
+    import logging
+
+    if db and table_name:
+        if is_alert_suppressed(db, table_name):
+            return
+        if is_alert_deduped(db, table_name, alert_type):
+            return
 
     from config.loader import load_config
 
@@ -56,29 +63,59 @@ def dispatch_alert(alert_type: str, message: str, table_name: str = None, subjec
 
     routing_rules = config.get("alerts", {}).get("routing", [])
     dispatched = False
+    
+    # Prepend severity icon
+    icon = "🔴" if severity == "fail" else "🟠"
+    formatted_message = f"{icon} [{severity.upper()}] {message}"
+    used_channel = None
 
     for rule in routing_rules:
         match = rule.get("match", {})
         type_match = match.get("alert_type") == alert_type or match.get("alert_type") is None
+        severity_match = match.get("severity") == severity or match.get("severity") is None
 
         table_match = True
         if table_name and match.get("table_pattern"):
             pattern = match.get("table_pattern").replace("*", ".*")
             table_match = bool(re.match(f"^{pattern}$", table_name))
 
-        if type_match and table_match:
+        if type_match and table_match and severity_match:
             channel = rule.get("channel", "slack")
-            # Pass extra config (like specific slack channel) to the dispatcher
             kwargs = {k: v for k, v in rule.items() if k not in ["match", "channel"]}
-            dispatcher = get_alert_dispatcher(channel, **kwargs)
-            dispatcher.send(message, subject, alert_type=alert_type, table_name=table_name)
-            dispatched = True
+            try:
+                dispatcher = get_alert_dispatcher(channel, **kwargs)
+                if dispatcher.send(formatted_message, subject, alert_type=alert_type, table_name=table_name):
+                    dispatched = True
+                    used_channel = channel
+            except Exception as e:
+                logging.getLogger(__name__).error(f"Failed to send alert via {channel}: {e}")
 
     if not dispatched:
         # Fallback to default channel from config
         default_channel = config.get("alerts", {}).get("default_channel", "slack")
-        dispatcher = get_alert_dispatcher(default_channel)
-        dispatcher.send(message, subject, alert_type=alert_type, table_name=table_name)
+        try:
+            dispatcher = get_alert_dispatcher(default_channel)
+            if dispatcher.send(formatted_message, subject, alert_type=alert_type, table_name=table_name):
+                dispatched = True
+                used_channel = default_channel
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to send default alert via {default_channel}: {e}")
+
+    if dispatched and db:
+        from backend.models import AlertLog
+        try:
+            log = AlertLog(
+                alert_type=alert_type,
+                channel=used_channel,
+                table_name=table_name,
+                message=formatted_message,
+                success=True
+            )
+            db.add(log)
+            db.commit()
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Failed to insert AlertLog: {e}")
+            db.rollback()
 
 
 def is_alert_suppressed(db, table_name: str) -> bool:

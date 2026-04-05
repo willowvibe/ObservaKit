@@ -203,15 +203,6 @@ def _compute_diff(table_name: str, old_columns: list, new_columns: list, db: Ses
 
 def _trigger_schema_alert(table: str, diffs: list, channel: str, db: Session):
     """Dispatch a schema drift alert using routing rules from kit.yml."""
-    # Deduplication: skip if same table+type was alerted in the last 60 minutes
-    recent = db.query(AlertLog).filter(
-        AlertLog.table_name == table,
-        AlertLog.alert_type == "schema",
-        AlertLog.sent_at >= datetime.now(timezone.utc) - timedelta(minutes=60),
-    ).first()
-    if recent:
-        logger.info(f"Skipping duplicate alert for {table} (last sent {recent.sent_at})")
-        return
 
     changes_text = "\n".join(
         f"  - Column `{d['column']}` {d['change_type']}"
@@ -223,28 +214,16 @@ def _trigger_schema_alert(table: str, diffs: list, channel: str, db: Session):
         for d in diffs
     )
     message = (
-        f"⚠️ Schema Drift Detected: {table}\n"
+        f"Schema Drift Detected: {table}\n"
         f"{changes_text}\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
     )
-    success = False
-    try:
-        dispatch_alert(
-            alert_type="schema",
-            table_name=table,
-            subject=f"⚠️ Schema Drift: {table}",
-            message=message,
-        )
-        success = True
-    except Exception as e:
-        logger.error(f"Failed to send schema drift alert: {e}")
 
-    # Log the alert for deduplication and audit
-    alert_log = AlertLog(
+    dispatch_alert(
         alert_type="schema",
-        channel=channel,
         table_name=table,
+        subject=f"⚠️ Schema Drift: {table}",
         message=message,
-        success=success,
+        db=db,
+        severity="warn"
     )
-    db.add(alert_log)

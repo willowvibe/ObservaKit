@@ -3,10 +3,29 @@ ObservaKit — Base Connector Classes
 Abstract base classes for warehouse and orchestrator connectors.
 """
 
+import logging
 import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional
+
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+logger = logging.getLogger(__name__)
+
+def resilient_query():
+    """
+    Decorator for adding exponential backoff retries to warehouse queries.
+    Useful for handling intermittent TCP drops or warehouse cold starts.
+    """
+    return retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+        before_sleep=lambda retry_state: logger.warning(
+            f"Transient warehouse error encountered. Retrying (attempt {retry_state.attempt_number})..."
+        )
+    )
 
 
 class WarehouseConnector(ABC):

@@ -316,6 +316,8 @@ def validate_contracts(
                     f"has {total - passed_count} violation(s).\n"
                     f"Failed rules: {', '.join(failed_rules)}"
                 ),
+                db=db,
+                severity="fail"
             )
 
         all_results.append({

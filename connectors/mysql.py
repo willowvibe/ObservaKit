@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from connectors.base import WarehouseConnector
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ class MySQLConnector(WarehouseConnector):
         if self._conn and self._conn.open:
             self._conn.close()
 
+    @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
         conn = self.connect()
         try:
@@ -65,6 +66,7 @@ class MySQLConnector(WarehouseConnector):
             logger.error(f"Error getting max timestamp for {table}.{column}: {e}")
             raise
 
+    @resilient_query()
     def get_row_count(self, table: str) -> int:
         conn = self.connect()
         try:
@@ -76,6 +78,7 @@ class MySQLConnector(WarehouseConnector):
             logger.error(f"Error getting row count for {table}: {e}")
             raise
 
+    @resilient_query()
     def get_schema(self, table: str) -> list[dict]:
         """
         Returns columns from information_schema.
@@ -108,6 +111,7 @@ class MySQLConnector(WarehouseConnector):
             logger.error(f"Error getting schema for {table}: {e}")
             raise
 
+    @resilient_query()
     def execute_query(self, query: str, params: dict = None) -> list[dict]:
         """Execute a raw SQL query and return results as dicts."""
         import pymysql.cursors

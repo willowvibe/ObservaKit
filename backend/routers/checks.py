@@ -20,7 +20,7 @@ from prometheus_client import Gauge
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from alerts.base import dispatch_alert, get_lineage_impact, is_alert_deduped, is_alert_suppressed
+from alerts.base import dispatch_alert, get_lineage_impact
 from backend.models import AlertLog, CheckResult, VolumeRecord, get_db
 from config.loader import load_config
 from connectors.base import get_warehouse_connector
@@ -281,19 +281,18 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
             })
 
             if not passed and not dry_run:
-                if is_alert_suppressed(db, table):
-                    pass
-                else:
-                    # Trigger lineage-aware alert
-                    downstream = get_lineage_impact(table)
-                    impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
+                # Trigger lineage-aware alert
+                downstream = get_lineage_impact(table)
+                impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
 
-                    dispatch_alert(
-                        alert_type="quality",
-                        table_name=table,
-                        subject=f"❌ Quality Check Failed: {name}",
-                        message=f"Table: {table}\nCheck: {name}\nResult: {result_value}\nAssertion: {assertion}{impact_msg}"
-                    )
+                dispatch_alert(
+                    alert_type="quality",
+                    table_name=table,
+                    subject=f"❌ Quality Check Failed: {name}",
+                    message=f"Table: {table}\nCheck: {name}\nResult: {result_value}\nAssertion: {assertion}{impact_msg}",
+                    db=db,
+                    severity="fail"
+                )
 
         except Exception as e:
             logger.error(f"Error running custom SQL check {check_cfg.get('name')}: {e}")
@@ -503,41 +502,26 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
 
 def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, channel: str, db: Session):
     """Dispatch a volume anomaly alert."""
-    if is_alert_deduped(db, table, "volume"):
-        return
-
     downstream = get_lineage_impact(table)
     impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
 
     message = (
-        f"🔴 Volume Anomaly: {table}\n"
+        f"Volume Anomaly: {table}\n"
         f"  Current rows: {count:,}\n"
         f"  7-day average: {avg:,.0f}\n"
         f"  Deviation: {deviation * 100:.1f}%\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
         f"{impact_msg}"
     )
-    success = False
-    try:
-        dispatch_alert(
-            alert_type="volume",
-            table_name=table,
-            subject=f"🔴 Volume Anomaly: {table}",
-            message=message
-        )
-        success = True
-    except Exception as e:
-        logger.error(f"Failed to send volume alert: {e}")
-
-    # Log the alert for deduplication and audit
-    alert_log = AlertLog(
+    
+    dispatch_alert(
         alert_type="volume",
-        channel=channel,
         table_name=table,
+        subject=f"🔴 Volume Anomaly: {table}",
         message=message,
-        success=success,
+        db=db,
+        severity="warn"
     )
-    db.add(alert_log)
 
 
 def run_consistency_checks(connector, db: Session) -> list[dict]:
@@ -631,6 +615,8 @@ def run_consistency_checks(connector, db: Session) -> list[dict]:
                     table_name=check_cfg.get("table_a"),
                     subject=f"❌ Consistency Check Failed: {name}",
                     message=f"Consistency check failed: {name}\n{details}",
+                    db=db,
+                    severity="fail"
                 )
 
         except Exception as e:

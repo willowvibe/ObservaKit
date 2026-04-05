@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Gauge
 from sqlalchemy.orm import Session
 
-from alerts.base import dispatch_alert, is_alert_deduped, is_alert_suppressed
+from alerts.base import dispatch_alert
 from backend.auth import verify_api_key
 from backend.models import AlertLog, FreshnessRecord, get_db
 from config.loader import load_config
@@ -167,37 +167,20 @@ def _parse_duration(duration_str: str) -> float:
 
 
 def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db: Session):
-    """Dispatch a freshness alert with deduplication via AlertLog."""
-    if is_alert_deduped(db, table, "freshness"):
-        return
-    if is_alert_suppressed(db, table):
-        return
-
+    """Dispatch a freshness alert."""
     lag_str = f"{lag_seconds / 3600:.1f} hours" if lag_seconds is not None else "unknown (no data found)"
     message = (
-        f"{'🔴' if status == 'fail' else '🟡'} Freshness Alert: {table}\n"
+        f"Freshness Alert: {table}\n"
         f"  Lag: {lag_str}\n"
         f"  Status: {status.upper()}\n"
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
     )
-    success = False
-    try:
-        dispatch_alert(
-            alert_type="freshness",
-            table_name=table,
-            subject=f"{'🔴' if status == 'fail' else '🟡'} Freshness: {table} is {status}",
-            message=message,
-        )
-        success = True
-    except Exception as e:
-        logger.error(f"Failed to send freshness alert: {e}")
 
-    # Log the alert for deduplication and audit
-    alert_log = AlertLog(
+    dispatch_alert(
         alert_type="freshness",
-        channel=channel,
         table_name=table,
+        subject=f"{'🔴' if status == 'fail' else '🟡'} Freshness: {table} is {status}",
         message=message,
-        success=success,
+        db=db,
+        severity=status
     )
-    db.add(alert_log)

@@ -151,6 +151,8 @@ def take_distribution_snapshot(
                                 f"Previous: {drift_result.get('previous_value')}\n"
                                 f"Current:  {drift_result.get('current_value')}"
                             ),
+                            db=db,
+                            severity="warn"
                         )
 
                 results.append({

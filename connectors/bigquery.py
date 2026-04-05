@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from connectors.base import WarehouseConnector
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ class BigQueryConnector(WarehouseConnector):
             self._client.close()
             self._client = None
 
+    @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
         """Get the max value of a timestamp column."""
         client = self.connect()
@@ -62,6 +63,7 @@ class BigQueryConnector(WarehouseConnector):
             logger.error(f"BigQuery error getting max timestamp for {table}.{column}: {e}")
             raise
 
+    @resilient_query()
     def get_row_count(self, table: str) -> int:
         """Get the current row count of a table."""
         client = self.connect()
@@ -77,6 +79,7 @@ class BigQueryConnector(WarehouseConnector):
             logger.error(f"BigQuery error getting row count for {table}: {e}")
             raise
 
+    @resilient_query()
     def get_schema(self, table: str) -> list[dict]:
         """Get schema from INFORMATION_SCHEMA.COLUMNS."""
         client = self.connect()
@@ -99,6 +102,7 @@ class BigQueryConnector(WarehouseConnector):
             logger.error(f"BigQuery error getting schema for {table}: {e}")
             raise
 
+    @resilient_query()
     def execute_query(self, query: str, params: dict = None) -> list[dict]:
         """Execute a raw SQL query."""
         client = self.connect()
@@ -118,6 +122,7 @@ class BigQueryConnector(WarehouseConnector):
             logger.error(f"BigQuery error executing query: {e}")
             raise
 
+    @resilient_query()
     def get_compute_costs(self, days: int = 7) -> float:
         """Get total bytes billed over the last N days from INFORMATION_SCHEMA.JOBS."""
         client = self.connect()

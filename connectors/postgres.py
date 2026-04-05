@@ -11,7 +11,7 @@ from typing import Optional
 import psycopg2
 import psycopg2.extras
 
-from connectors.base import WarehouseConnector
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class PostgresConnector(WarehouseConnector):
         if self._conn and not self._conn.closed:
             self._conn.close()
 
+    @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
         """Get the max value of a timestamp column."""
         conn = self.connect()
@@ -55,6 +56,7 @@ class PostgresConnector(WarehouseConnector):
             conn.rollback()
             raise
 
+    @resilient_query()
     def get_row_count(self, table: str) -> int:
         """Get the current row count of a table."""
         conn = self.connect()
@@ -68,6 +70,7 @@ class PostgresConnector(WarehouseConnector):
             conn.rollback()
             raise
 
+    @resilient_query()
     def get_schema(self, table: str) -> list[dict]:
         """
         Get the schema from information_schema.columns.
@@ -100,6 +103,7 @@ class PostgresConnector(WarehouseConnector):
             conn.rollback()
             raise
 
+    @resilient_query()
     def execute_query(self, query: str, params: dict = None) -> list[dict]:
         """Execute a raw SQL query and return results as dicts."""
         conn = self.connect()

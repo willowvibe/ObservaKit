@@ -16,7 +16,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from connectors.base import WarehouseConnector
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ class RedshiftConnector(WarehouseConnector):
         if self._conn and not self._conn.is_closed():
             self._conn.close()
 
+    @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
         conn = self.connect()
         try:
@@ -83,6 +84,7 @@ class RedshiftConnector(WarehouseConnector):
             conn.rollback()
             raise
 
+    @resilient_query()
     def get_row_count(self, table: str) -> int:
         conn = self.connect()
         try:
@@ -95,6 +97,7 @@ class RedshiftConnector(WarehouseConnector):
             conn.rollback()
             raise
 
+    @resilient_query()
     def get_schema(self, table: str) -> list[dict]:
         """
         Use SVV_COLUMNS which works for regular tables, late-binding views,
@@ -153,6 +156,7 @@ class RedshiftConnector(WarehouseConnector):
                 conn.rollback()
                 raise
 
+    @resilient_query()
     def execute_query(self, query: str, params=None) -> list[dict]:
         """Execute a raw SQL query and return results as list of dicts."""
         conn = self.connect()
@@ -169,6 +173,7 @@ class RedshiftConnector(WarehouseConnector):
             conn.rollback()
             raise
 
+    @resilient_query()
     def get_query_bytes_scanned(self, hours: int = 24) -> list[dict]:
         """
         FinOps helper: return total bytes scanned per user/query label in the last N hours.
