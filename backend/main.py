@@ -68,7 +68,7 @@ app = FastAPI(
         "Data Observability Starter Kit — self-hosted observability layer "
         "providing Freshness, Volume, Quality, Schema Drift, and Pipeline Health monitoring."
     ),
-    version="0.1.11",
+    version="0.1.12",
     lifespan=lifespan,
 )
 
@@ -162,7 +162,7 @@ if _STATIC_DIR.exists():
 async def root():
     return {
         "service": "ObservaKit",
-        "version": "0.1.11",
+        "version": "0.1.12",
         "status": "running",
         "docs": "/docs",
         "maintained_by": "WillowVibe DataSynapse",
@@ -212,7 +212,7 @@ async def healthz():
     payload = {
         "status": "ok" if db_ok else "degraded",
         "database": "ok" if db_ok else "unreachable",
-        "version": "0.1.11",
+        "version": "0.1.12",
     }
     status_code = 200 if db_ok else 503
     return JSONResponse(content=payload, status_code=status_code)

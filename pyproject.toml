@@ -7,7 +7,7 @@ include = ["backend*", "cli*", "alerts*", "connectors*", "config*", "dbt_integra
 
 [project]
 name = "observakit"
-version = "0.1.11"
+version = "0.1.12"
 description = "Data Observability Starter Kit for small teams"
 readme = "README.md"
 license = "MIT"
