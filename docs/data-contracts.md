@@ -145,7 +145,6 @@ observakit validate-config
 # Via API (Trigger real-time validation against the warehouse)
 curl -X POST http://localhost:8000/contracts/validate \
   -H "X-API-Key: $OBSERVAKIT_API_KEY"
-```
 
 # Validate a specific contract by ID
 curl -X POST "http://localhost:8000/contracts/validate?contract_id=orders_v1" \

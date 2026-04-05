@@ -161,7 +161,7 @@ alerts:
       channel: pagerduty
 ```
 
-This v0.3.0 milestone was delivered early due to high demand. Native integration ensures better event deduplication and incident management compared to generic webhooks.
+This feature was delivered early due to high demand. Native integration ensures better event deduplication and incident management compared to generic webhooks.
 
 ---
 
