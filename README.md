@@ -404,11 +404,11 @@ make ui-build     # Build React dashboard
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 **Good first issues:**
-- Add a new warehouse connector (DuckDB, Databricks, Trino)
 - Add a Grafana dashboard for a new use case
 - Write a quality check template for a common schema pattern
 - Improve documentation or add a tutorial
-- Add Microsoft Teams alert dispatcher
+- Add column-level lineage tracking
+- Improve the CLI experience with autocomplete
 
 ## License
 

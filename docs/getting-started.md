@@ -10,7 +10,7 @@ This guide takes you from zero to a fully running observability layer in about 1
 |-------------|-------|
 | Docker + Docker Compose v2 | `docker compose version` should show v2.x |
 | Python 3.10+ | Only needed if you want the CLI or dev mode |
-| A supported warehouse | PostgreSQL, MySQL, Snowflake, BigQuery, or Redshift |
+| A supported warehouse | PostgreSQL, MySQL, Snowflake, BigQuery, Redshift, DuckDB, Databricks, or Trino |
 
 ---
 
