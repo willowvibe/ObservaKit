@@ -274,8 +274,9 @@ def cmd_validate_config(args) -> int:
 
     # 6. Validate contracts directory if specified
     contracts_dir = config.get("contracts", {}).get("directory", "config/contracts")
-    import os as _os
     import glob as _glob
+    import os as _os
+
     import yaml
     contract_files = _glob.glob(f"{contracts_dir}/*.yml") if _os.path.isdir(contracts_dir) else []
     contract_errors = 0

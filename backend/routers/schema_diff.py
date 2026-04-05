@@ -4,13 +4,13 @@ Snapshots information_schema and detects column-level changes.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from alerts.base import dispatch_alert
-from backend.models import AlertLog, SchemaDiff, SchemaSnapshot, get_db
+from backend.models import SchemaDiff, SchemaSnapshot, get_db
 from config.loader import load_config
 
 logger = logging.getLogger(__name__)

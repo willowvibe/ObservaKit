@@ -26,23 +26,26 @@
 - [x] **Discord alert channel** (rich embeds)
 - [x] **Generic outgoing Webhook alerts** (HMAC-signed, works with PagerDuty, Opsgenie, n8n)
 - [x] **`/healthz` endpoint** (Kubernetes liveness/readiness probe)
+- [x] **DuckDB / Databricks / Trino connectors**
+- [x] **PagerDuty native integration** (Events API v2)
+- [x] **Microsoft Teams alert channel** (Adaptive Cards)
+- [x] **`observakit init`** interactive setup wizard
+- [x] **`observakit validate-config`** & **`observakit diff`** CLI tools
+- [x] **Automatic Query Retries** (tenacity-based resiliency for all warehouses)
+- [x] **Centralized Alert Auditing** (`AlertLog` table)
+- [x] **Slack Block Kit** support (richer notifications with severity colour-strips)
 
 ---
 
-## v0.2.0 — Connector & Storage Expansion
+## v0.2.0 — Storage & Advanced Monitoring
 
-- [ ] DuckDB connector (local analytics, dbt-core teams)
-- [ ] Databricks / Spark SQL connector
-- [ ] Trino / Presto connector
 - [ ] Delta Lake support (via delta-rs)
 - [ ] Backfill detection (distinguish backfill spikes from true anomalies)
 - [ ] Late-arriving data detector (tracks expected vs actual data arrival times)
 - [ ] Scheduled metadata purge (auto-delete records older than N days)
 
-## v0.3.0 — Alerting & Incident Management
+## v0.3.0 — Incident Management & Analytics
 
-- [ ] PagerDuty native integration (Events API v2, auto-resolve on recovery)
-- [ ] Microsoft Teams webhook
 - [ ] Opsgenie integration
 - [ ] Incident timeline — link related alerts into a single incident
 - [ ] Alert recovery notifications (auto-send "resolved" when checks pass again)
@@ -56,7 +59,6 @@
 - [ ] Distribution trend charts (visualise value shares over time)
 - [ ] Check history timeline (visualise pass/fail streaks)
 - [ ] Dark mode
-- [ ] `observakit init` interactive setup wizard (generates kit.yml interactively)
 - [ ] Python SDK (`pip install observakit`) for programmatic access
 - [ ] Pre-commit hook — run quality checks in CI before merging
 

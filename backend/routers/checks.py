@@ -21,7 +21,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from alerts.base import dispatch_alert, get_lineage_impact
-from backend.models import AlertLog, CheckResult, VolumeRecord, get_db
+from backend.models import CheckResult, VolumeRecord, get_db
 from config.loader import load_config
 from connectors.base import get_warehouse_connector
 
@@ -518,7 +518,7 @@ def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, 
         f"  Detected at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
         f"{impact_msg}"
     )
-    
+
     dispatch_alert(
         alert_type="volume",
         table_name=table,

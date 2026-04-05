@@ -207,9 +207,12 @@ rules:
 
 ### Discord alerts not sending
 
-1. Check `DISCORD_WEBHOOK_URL` is set.
-2. Discord webhooks return HTTP 204 on success (not 200) — ObservaKit handles this correctly in v0.1.7+.
-3. Test directly: copy the URL from Discord → Server Settings → Integrations → Webhooks.
+1. Check `PAGERDUTY_ROUTING_KEY` is set correctly in `.env`.
+2. Check the **`AlertLog`** table in your metadata DB for details on each dispatch failure:
+   ```sql
+   SELECT sent_at, success, message FROM alert_logs ORDER BY sent_at DESC LIMIT 10;
+   ```
+3. PagerDuty Events API v2 returns descriptive error messages in the `message` field if a routing key or payload is invalid.
 
 ### Duplicate alerts firing
 
@@ -228,6 +231,22 @@ curl -X POST http://localhost:8000/suppress \
 # Or use the CLI:
 observakit suppress orders 4h
 ```
+
+---
+
+## Warehouse Connectivity
+
+### Intermittent `OperationalError` or `TCP Reset`
+
+Data warehouses occasionally reset connections during maintenance or high load.
+
+**Fix:**
+ObservaKit (v0.1.10+) includes an **automatic retry engine** via the `@resilient_query` decorator. This provides:
+- 3 attempts per query.
+- Exponential backoff (2, 4, 8 seconds).
+- Automatic reconnection on stale sessions.
+
+If you are still seeing connection issues, check if your warehouse has a narrow rate-limit or if the ObservaKit host's IP is being throttled by a firewall.
 
 ---
 

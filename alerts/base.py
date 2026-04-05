@@ -51,8 +51,8 @@ def dispatch_alert(alert_type: str, message: str, table_name: str = None, subjec
     Dispatch an alert using routing rules from kit.yml.
     Uses load_config() so that ${VAR:-default} env vars are properly expanded.
     """
-    import re
     import logging
+    import re
 
     if db and table_name:
         if is_alert_suppressed(db, table_name):
@@ -69,7 +69,7 @@ def dispatch_alert(alert_type: str, message: str, table_name: str = None, subjec
 
     routing_rules = config.get("alerts", {}).get("routing", [])
     dispatched = False
-    
+
     # Prepend severity icon
     icon = "🔴" if severity == "fail" else "🟠"
     formatted_message = f"{icon} [{severity.upper()}] {message}"

@@ -46,6 +46,24 @@ ObservaKit distinguishes between `admin` and `viewer` roles, ensuring only autho
 
 Always enforce CPU and Memory limits (as defined in `backend-deployment.yaml`). APScheduler background threads can occasionally spike CPU usage if multiple heavy warehouse queries execute concurrently. A minimum of `512Mi` memory is recommended.
 
+## Resiliency & Retries
+
+Data warehouses are notoriously prone to transient connectivity issues (TCP resets, rate limits, maintenance windows). ObservaKit implements **industrial-grade exponential backoff** for all core warehouse operations:
+
+- **Automatic Retries**: All `SELECT` queries for freshness, volume, distribution, and schema checks are decorated with `@resilient_query`.
+- **Strategy**: 3 attempts with exponential backoff (`2^n` seconds).
+- **Graceful Failure**: If all retries fail, a `critical` alert is dispatched specifically for the connectivity failure, preventing silent monitoring gaps.
+
+## Alert Logging & Auditing
+
+For production compliance and incident post-mortems, every alert dispatched by ObservaKit is persisted to the **`AlertLog`** metadata table.
+
+- **Deduplication**: ObservaKit automatically suppresses duplicate alerts for the same table/type within a 60-minute window (configurable in `kit.yml`).
+- **Audit Trail**: You can query the `AlertLog` table directly or via the API to see a history of what was sent, to which channel, and the full JSON payload:
+  ```sql
+  SELECT * FROM alert_log WHERE table_name = 'public.orders' ORDER BY dispatched_at DESC;
+  ```
+
 ## Backups & Point-In-Time-Recovery (PITR)
 
 ObservaKit maintains critical historical state (snapshots, freshness models, volume metrics). 

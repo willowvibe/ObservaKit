@@ -19,8 +19,15 @@ This guide takes you from zero to a fully running observability layer in about 1
 ```bash
 git clone https://github.com/willowvibe/ObservaKit.git
 cd ObservaKit
-cp .env.example .env
+pip install -e .
+observakit init
 ```
+
+The interactive wizard will help you:
+1. Create your `.env` file with warehouse credentials
+2. Select your warehouse type (Postgres, BigQuery, Snowflake, etc.)
+3. Configure your first alert channel (Slack, Teams, PagerDuty)
+4. Verify your connection immediately
 
 Open `.env` and set at minimum:
 
@@ -42,6 +49,15 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 > **Note**: ObservaKit connects to your warehouse **read-only** for most operations (freshness, volume, schema checks). It only needs a user with `SELECT` on `information_schema` and your monitored tables.
 
+### 1.1 — Validate Configuration
+
+Before starting the containers, ensure your `kit.yml` is syntactically correct:
+
+```bash
+observakit validate-config
+# → ✅ Configuration valid (found 12 table monitors)
+```
+
 ---
 
 ## Step 2 — Start the service
@@ -59,7 +75,7 @@ docker compose up -d
 Check it's running:
 ```bash
 curl http://localhost:8000/healthz
-# → {"status": "ok", "database": "ok", "version": "0.1.7"}
+# → {"status": "ok", "database": "ok", "version": "0.1.10"}
 ```
 
 ---

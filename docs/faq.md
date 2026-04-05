@@ -151,16 +151,17 @@ observakit suppress orders 4h
 
 ### Can I integrate with PagerDuty?
 
-Yes — use the generic webhook alert channel and point it at the PagerDuty Events API v2:
+Yes. ObservaKit supports **Native PagerDuty integration** using the Events API v2. You only need to provide your `PAGERDUTY_ROUTING_KEY` in `.env` and route alerts accordingly:
+
 ```yaml
 alerts:
   routing:
     - match:
         alert_type: "quality"
-      channel: webhook
-      webhook_url: https://events.pagerduty.com/v2/enqueue
+      channel: pagerduty
 ```
-The webhook payload includes `severity`, `table_name`, `subject`, and `message` fields. You may need a thin middleware to translate the ObservaKit payload to the PagerDuty envelope format. Native PagerDuty integration is planned for v0.3.0.
+
+This v0.3.0 milestone was delivered early due to high demand. Native integration ensures better event deduplication and incident management compared to generic webhooks.
 
 ---
 
@@ -216,6 +217,10 @@ Connect to the metadata DB and delete old records:
 DELETE FROM check_results WHERE executed_at < NOW() - INTERVAL '90 days';
 DELETE FROM volume_records WHERE recorded_at < NOW() - INTERVAL '90 days';
 DELETE FROM freshness_records WHERE checked_at < NOW() - INTERVAL '90 days';
+DELETE FROM alert_logs WHERE sent_at < NOW() - INTERVAL '90 days';
 -- etc.
 ```
-A scheduled purge task is on the roadmap.
+
+### Is there a first-time setup tool?
+
+Yes! Run **`observakit init`** after cloning the repo. This interactive wizard will detect your warehouse type, help you set up your `.env` file, and verify your connection immediately.
