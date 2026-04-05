@@ -1,175 +1,309 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import {
+  Activity,
+  Clock,
+  BarChart2,
+  CheckSquare,
+  GitBranch,
+  Zap,
+  DollarSign,
+  Building2,
+  Users,
+  LineChart,
+  AlertCircle,
+  Settings2,
+  Award,
+  Github,
+  LayoutDashboard,
+  ArrowRight,
+} from 'lucide-react';
 import './index.css';
 import Dashboard from './dashboard/Dashboard';
 import './dashboard/Dashboard.css';
 
+// ---------------------------------------------------------------------------
+// Nav
+// ---------------------------------------------------------------------------
+function SiteNav() {
+  return (
+    <nav className="site-nav">
+      <Link to="/" className="nav-logo">
+        <Activity size={18} />
+        ObservaKit
+      </Link>
+      <div className="nav-links">
+        <a
+          href="https://github.com/willowvibe/ObservaKit"
+          target="_blank"
+          rel="noreferrer"
+          className="nav-link"
+        >
+          GitHub
+        </a>
+        <Link to="/ui" className="nav-link nav-cta">
+          Dashboard
+        </Link>
+      </div>
+    </nav>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Landing Page
+// ---------------------------------------------------------------------------
 function LandingPage() {
   const features = [
     {
-      title: "Freshness Monitoring",
-      icon: "🕐",
-      desc: "Detects stale tables by tracking max(updated_at) and comparing against your SLA thresholds."
+      icon: <Clock size={18} />,
+      title: 'Freshness Monitoring',
+      desc: 'Detects stale tables by tracking max(updated_at) and comparing against your SLA thresholds.',
     },
     {
-      title: "Volume Anomaly Detection",
-      icon: "📊",
-      desc: "Tracks row counts per table per DAG run with Z-score anomaly detection against a 7-day rolling average."
+      icon: <BarChart2 size={18} />,
+      title: 'Volume Anomaly Detection',
+      desc: 'Tracks row counts per table per DAG run with Z-score anomaly detection against a 7-day rolling average.',
     },
     {
-      title: "Quality Checks",
-      icon: "✅",
-      desc: "Ships with pre-built Soda Core and Great Expectations templates for null checks, duplicates, and limits."
+      icon: <CheckSquare size={18} />,
+      title: 'Quality Checks',
+      desc: 'Ships with pre-built Soda Core and Great Expectations templates for null checks, duplicates, and limits.',
     },
     {
-      title: "Schema Drift Detector",
-      icon: "🔀",
-      desc: "Snapshots information_schema and diffs against previous snapshots. Detects added/removed columns."
+      icon: <GitBranch size={18} />,
+      title: 'Schema Drift Detector',
+      desc: 'Snapshots information_schema and diffs against previous snapshots. Detects added/removed columns.',
     },
     {
-      title: "Pipeline Health",
-      icon: "🚀",
-      desc: "Pulls Airflow/Prefect metrics via REST API and OpenTelemetry. Pre-built Grafana dashboards."
+      icon: <Zap size={18} />,
+      title: 'Pipeline Health',
+      desc: 'Pulls Airflow/Prefect metrics via REST API and OpenTelemetry. Pre-built Grafana dashboards included.',
     },
     {
-      title: "FinOps Tracker",
-      icon: "💸",
-      desc: "Cost observability for Snowflake compute credits and BigQuery bytes billed out-of-the-box."
-    }
+      icon: <DollarSign size={18} />,
+      title: 'FinOps Tracker',
+      desc: 'Cost observability for Snowflake compute credits and BigQuery bytes billed out-of-the-box.',
+    },
+  ];
+
+  const useCases = [
+    {
+      icon: <Building2 size={16} />,
+      title: 'Internal Data Platforms',
+      desc: 'Stop paying SaaS vendors per-table pricing. Deploy ObservaKit in your VPC to monitor millions of tables securely at zero marginal cost.',
+    },
+    {
+      icon: <Users size={16} />,
+      title: 'Agency & Consultancies',
+      desc: 'Embed ObservaKit into client deliverables to provide day-one observability guarantees for the ETL pipelines you build for them.',
+    },
+    {
+      icon: <LineChart size={16} />,
+      title: 'Analytics Engineering',
+      desc: 'Catch schema drift and null-value spikes before they break downstream BI dashboards and erode stakeholder trust.',
+    },
   ];
 
   return (
     <>
-      <main>
-        <div className="badge animate-in">v{__APP_VERSION__} • Open Source</div>
-        <h1 className="animate-in delay-1">Data Observability<br />Starter Kit</h1>
-        <p className="subtitle animate-in delay-2">
-          A self-hosted, Docker-Compose-ready observability layer that gives small data teams the 5 core observability pillars without needing a paid platform.
-        </p>
-        
-        <div className="cta-container animate-in delay-3">
-          <a href="https://github.com/willowvibe/ObservaKit" className="cta-button" target="_blank" rel="noreferrer">
-            View on GitHub
-          </a>
-          <Link to="/ui" className="cta-button secondary">
-            Open Dashboard
-          </Link>
-        </div>
+      <SiteNav />
+      <div className="landing-container">
+        {/* Hero */}
+        <section className="hero animate-in">
+          <div className="badge">v{__APP_VERSION__} · Open Source</div>
+          <h1>
+            Data Observability
+            <br />
+            Starter Kit
+          </h1>
+          <p className="subtitle">
+            A self-hosted, Docker-Compose-ready observability layer for small data teams — covering all 5 core pillars without a paid platform.
+          </p>
+          <div className="cta-container animate-in delay-2">
+            <a
+              href="https://github.com/willowvibe/ObservaKit"
+              className="cta-button"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Github size={15} />
+              View on GitHub
+            </a>
+            <Link to="/ui" className="cta-button secondary">
+              <LayoutDashboard size={15} />
+              Open Dashboard
+            </Link>
+          </div>
+        </section>
 
-        <div className="features-grid animate-in delay-3">
-          {features.map((f, i) => (
-            <div className="feature-card" key={i}>
-              <h3><span style={{fontSize: '1.5rem'}}>{f.icon}</span> {f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
-        </div>
+        {/* Features */}
+        <section className="section animate-in delay-3">
+          <p className="section-label">What's included</p>
+          <h2>Five pillars, zero vendor lock-in</h2>
+          <p className="section-subtitle">
+            Everything your data team needs to monitor pipeline health, detect anomalies, and enforce quality standards.
+          </p>
+          <div className="features-grid">
+            {features.map((f, i) => (
+              <div className="feature-card" key={i}>
+                <div className="feature-icon">{f.icon}</div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* How to use */}
         <section className="info-section animate-in delay-3">
-          <h2>How to Use <span className="highlight">ObservaKit</span></h2>
+          <p className="section-label">Get started</p>
+          <h2>Up and running in minutes</h2>
+          <p className="section-subtitle">
+            Three steps from zero to full observability on your data warehouse.
+          </p>
           <div className="steps-container">
             <div className="step-card">
               <div className="step-number">1</div>
               <h3>Clone & Configure</h3>
-              <p>Clone the repo and copy <code>.env.example</code> to <code>.env</code>. Set your data warehouse credentials.</p>
+              <p>
+                Clone the repo and copy <code>.env.example</code> to <code>.env</code>. Set your data warehouse credentials.
+              </p>
             </div>
             <div className="step-card">
               <div className="step-number">2</div>
               <h3>Spin Up Containers</h3>
-              <p>Run <code>docker-compose up -d</code>. This launches the FastAPI backend and all tools.</p>
+              <p>
+                Run <code>docker-compose up -d</code>. This launches the FastAPI backend and all required services.
+              </p>
             </div>
             <div className="step-card">
               <div className="step-number">3</div>
               <h3>Schedule & Monitor</h3>
-              <p>Define your SLAs in the config block and view real-time anomalies in our built-in UI.</p>
+              <p>
+                Define your SLAs in the config file and view real-time anomalies in the built-in dashboard.
+              </p>
             </div>
           </div>
         </section>
 
+        {/* Use cases */}
         <section className="info-section animate-in delay-3">
-          <h2>Top Use Cases</h2>
+          <p className="section-label">Use cases</p>
+          <h2>Built for teams that ship data</h2>
+          <p className="section-subtitle">
+            From startup data platforms to enterprise analytics engineering teams.
+          </p>
           <div className="usecases-grid">
-            <div className="usecase-item">
-              <h3>🏢 Internal Data Platforms</h3>
-              <p>Stop paying SaaS vendors per-table pricing. Deploy ObservaKit in your VPC to monitor millions of tables securely at zero marginal cost.</p>
-            </div>
-            <div className="usecase-item">
-              <h3>🤝 Agency & Consultancies</h3>
-              <p>Embed ObservaKit into client deliverables to provide day-one observability guarantees for the ETL pipelines you build for them.</p>
-            </div>
-            <div className="usecase-item">
-              <h3>🔍 Analytics Engineering</h3>
-              <p>Catch schema drift and null-value spikes before they break downstream BI dashboards and erode stakeholder trust.</p>
-            </div>
+            {useCases.map((uc, i) => (
+              <div className="usecase-item" key={i}>
+                <h3>
+                  {uc.icon}
+                  {uc.title}
+                </h3>
+                <p>{uc.desc}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="info-section case-study-section animate-in delay-3">
-          <h2>Case Study: The <span className="highlight">$100k</span> Silent Failure</h2>
-          <p className="cs-lead-text">How a mid-sized fintech caught a failing legagy pipeline before it reached the CEO's dashboard.</p>
-          
-          <div className="cs-grid">
-            <div className="cs-card cs-problem">
-              <div className="cs-card-header">
-                <span className="cs-icon">🚨</span>
-                <h3>The Problem</h3>
-              </div>
-              <p>An upstream API timeout caused their critical <code>transactions</code> ETL pipeline to quietly write <strong>zero rows</strong> overnight.</p>
-              <div className="cs-metric-box bad">
-                <span className="cs-metric-value">0</span>
-                <span className="cs-metric-label">Rows Written</span>
-              </div>
-            </div>
+        {/* Case Study */}
+        <section className="info-section animate-in delay-3">
+          <div className="case-study-section">
+            <p className="section-label">Case Study</p>
+            <h2>
+              The <span className="highlight">$100k</span> Silent Failure
+            </h2>
+            <p className="cs-lead-text">
+              How a mid-sized fintech caught a failing pipeline before it reached the CEO's dashboard.
+            </p>
 
-            <div className="cs-arrow">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </div>
-
-            <div className="cs-card cs-solution-new">
-              <div className="cs-card-header">
-                <span className="cs-icon">⚙️</span>
-                <h3>The ObservaKit Solution</h3>
+            <div className="cs-grid">
+              <div className="cs-card cs-problem">
+                <div className="cs-card-header">
+                  <AlertCircle size={17} color="#ef4444" />
+                  <h3>The Problem</h3>
+                </div>
+                <p>
+                  An upstream API timeout caused their critical <code>transactions</code> ETL pipeline to quietly write <strong>zero rows</strong> overnight.
+                </p>
+                <div className="cs-metric-box bad">
+                  <span className="cs-metric-value">0</span>
+                  <span className="cs-metric-label">Rows Written</span>
+                </div>
               </div>
-              <ul className="cs-feature-list">
-                <li><strong>Volume Tracking:</strong> <span>Daily row count collection for `transactions`.</span></li>
-                <li><strong>Anomaly Detection:</strong> <span>Z-score ML algorithm detected a 100% volume drop.</span></li>
-              </ul>
-            </div>
 
-            <div className="cs-arrow">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </div>
-
-            <div className="cs-card cs-result-new">
-              <div className="cs-card-header">
-                <span className="cs-icon">🏆</span>
-                <h3>The Result</h3>
+              <div className="cs-arrow">
+                <ArrowRight size={18} />
               </div>
-              <p>Data Engineering investigated and backfilled data long before the 9:00 AM meeting.</p>
-              <div className="cs-metric-box good">
-                <span className="cs-metric-value">100%</span>
-                <span className="cs-metric-label">Data Trust</span>
+
+              <div className="cs-card cs-solution-new">
+                <div className="cs-card-header">
+                  <Settings2 size={17} color="#6366f1" />
+                  <h3>The ObservaKit Solution</h3>
+                </div>
+                <ul className="cs-feature-list">
+                  <li>
+                    <strong>Volume Tracking:</strong> Daily row count collection for <code>transactions</code>.
+                  </li>
+                  <li>
+                    <strong>Anomaly Detection:</strong> Z-score algorithm detected a 100% volume drop at 2 AM.
+                  </li>
+                  <li>
+                    <strong>Instant Alert:</strong> Slack notification fired before anyone started their day.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="cs-arrow">
+                <ArrowRight size={18} />
+              </div>
+
+              <div className="cs-card cs-result-new">
+                <div className="cs-card-header">
+                  <Award size={17} color="#10b981" />
+                  <h3>The Result</h3>
+                </div>
+                <p>
+                  Data Engineering investigated and backfilled the data long before the 9:00 AM executive meeting.
+                </p>
+                <div className="cs-metric-box good">
+                  <span className="cs-metric-value">100%</span>
+                  <span className="cs-metric-label">Data Trust Maintained</span>
+                </div>
               </div>
             </div>
           </div>
         </section>
-      </main>
+      </div>
 
       <footer className="site-footer">
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+        <div style={{ marginBottom: '0.625rem' }}>
           <a href="https://www.willowvibe.com" target="_blank" rel="noreferrer">
-            <img src={`${import.meta.env.BASE_URL}willowvibe-logo.png`} alt="WillowVibe Logo" height="40" />
+            <img
+              src={`${import.meta.env.BASE_URL}willowvibe-logo.png`}
+              alt="WillowVibe Logo"
+              height="28"
+            />
           </a>
         </div>
-        <p>Built with ❤️ by Data Engineers at <a href="https://www.willowvibe.com" target="_blank" rel="noreferrer">WillowVibe DataSynapse</a>.</p>
+        <p style={{ margin: 0 }}>
+          Built by{' '}
+          <a href="https://www.willowvibe.com" target="_blank" rel="noreferrer">
+            WillowVibe DataSynapse
+          </a>{' '}
+          ·{' '}
+          <a href="https://github.com/willowvibe/ObservaKit" target="_blank" rel="noreferrer">
+            Open Source on GitHub
+          </a>
+        </p>
       </footer>
     </>
   );
 }
 
+// ---------------------------------------------------------------------------
+// App Router
+// ---------------------------------------------------------------------------
 function App() {
   return (
     <Router basename={import.meta.env.BASE_URL}>

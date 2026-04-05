@@ -33,14 +33,15 @@ async function apiFetch(path, opts = {}) {
 // Shared components
 // ---------------------------------------------------------------------------
 const StatusBadge = ({ status }) => {
-  const map = {
-    ok:   'badge-ok',
-    warn: 'badge-warn',
-    fail: 'badge-fail',
+  const config = {
+    ok:   { cls: 'badge-ok',   icon: <CheckCircle  size={10} /> },
+    warn: { cls: 'badge-warn', icon: <AlertTriangle size={10} /> },
+    fail: { cls: 'badge-fail', icon: <XCircle       size={10} /> },
   };
+  const { cls, icon } = config[status] || config.ok;
   return (
-    <span className={`status-badge ${map[status] || 'badge-ok'}`}>
-      {status === 'ok' ? '✅' : status === 'warn' ? '⚠️' : '❌'} {status.toUpperCase()}
+    <span className={`status-badge ${cls}`}>
+      {icon} {status.toUpperCase()}
     </span>
   );
 };
@@ -397,9 +398,12 @@ const Dashboard = () => {
     <div className="dashboard-container">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="logo-spark">🔭</div>
+          <Activity size={17} className="sidebar-logo-icon" />
           <h2>ObservaKit</h2>
-          <div className={`backend-dot ${backendOk === true ? 'dot-ok' : backendOk === false ? 'dot-fail' : 'dot-loading'}`} />
+          <div
+            className={`backend-dot ${backendOk === true ? 'dot-ok' : backendOk === false ? 'dot-fail' : 'dot-loading'}`}
+            title={backendOk === true ? 'Backend connected' : backendOk === false ? 'Backend unreachable' : 'Checking connection…'}
+          />
         </div>
         <nav className="sidebar-nav">
           {TABS.map(tab => (
@@ -413,6 +417,7 @@ const Dashboard = () => {
           ))}
         </nav>
         <div className="sidebar-footer">
+          <a href={import.meta.env.BASE_URL} className="nav-link-sm">← Home</a>
           <a href="/docs" target="_blank" rel="noreferrer" className="nav-link-sm">API Docs ↗</a>
           <a href="https://github.com/willowvibe/ObservaKit" target="_blank" rel="noreferrer" className="nav-link-sm">GitHub ↗</a>
         </div>
