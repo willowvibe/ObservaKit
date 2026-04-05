@@ -41,9 +41,7 @@ class MySQLConnector(WarehouseConnector):
             import pymysql
             import pymysql.cursors
         except ImportError:
-            raise RuntimeError(
-                "PyMySQL is not installed. Run: pip install 'observakit[mysql]'"
-            )
+            raise RuntimeError("PyMySQL is not installed. Run: pip install 'observakit[mysql]'")
 
         if self._conn is None or not self._conn.open:
             self._conn = pymysql.connect(**self._config)

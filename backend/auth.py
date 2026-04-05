@@ -22,7 +22,7 @@ API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 async def verify_api_key(
     request: Request,
     api_key: Optional[str] = Security(API_KEY_HEADER),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Verify the API key:
@@ -47,7 +47,9 @@ async def verify_api_key(
 
     # Dev mode fallback
     if not expected_legacy_key and db.query(ApiKey).count() == 0:
-        logger.warning("No API keys found and OBSERVAKIT_API_KEY is not set. Allowing access (DEV MODE).")
+        logger.warning(
+            "No API keys found and OBSERVAKIT_API_KEY is not set. Allowing access (DEV MODE)."
+        )
         request.state.user_role = "super_admin"
         request.state.project_id = None
         return None

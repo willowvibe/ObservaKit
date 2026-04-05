@@ -10,10 +10,10 @@ import pytest
 
 from backend.routers.distribution import _detect_drift
 
-
 # ---------------------------------------------------------------------------
 # Null-% drift detection
 # ---------------------------------------------------------------------------
+
 
 class TestNullPctDrift:
     def test_null_pct_below_threshold_no_drift(self):
@@ -48,6 +48,7 @@ class TestNullPctDrift:
 # ---------------------------------------------------------------------------
 # Categorical value-share shift
 # ---------------------------------------------------------------------------
+
 
 class TestCategoricalDrift:
     def _make_cat(self, values: dict, null_pct=0.0) -> dict:
@@ -86,6 +87,7 @@ class TestCategoricalDrift:
 # ---------------------------------------------------------------------------
 # Numeric mean-shift detection
 # ---------------------------------------------------------------------------
+
 
 class TestNumericDrift:
     def _make_num(self, mean, max_val=1000.0, null_pct=0.0) -> dict:

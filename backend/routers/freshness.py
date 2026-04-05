@@ -173,7 +173,9 @@ def _parse_duration(duration_str: str) -> float:
 
 def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db: Session):
     """Dispatch a freshness alert."""
-    lag_str = f"{lag_seconds / 3600:.1f} hours" if lag_seconds is not None else "unknown (no data found)"
+    lag_str = (
+        f"{lag_seconds / 3600:.1f} hours" if lag_seconds is not None else "unknown (no data found)"
+    )
     message = (
         f"Freshness Alert: {table}\n"
         f"  Lag: {lag_str}\n"
@@ -187,5 +189,5 @@ def _trigger_alert(table: str, lag_seconds: float, status: str, channel: str, db
         subject=f"{'🔴' if status == 'fail' else '🟡'} Freshness: {table} is {status}",
         message=message,
         db=db,
-        severity=status
+        severity=status,
     )

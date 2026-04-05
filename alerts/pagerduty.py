@@ -48,7 +48,9 @@ class PagerDutyDispatcher(AlertDispatcher):
     """Sends alerts using the PagerDuty Events API v2."""
 
     def __init__(self, **kwargs):
-        self._routing_key = kwargs.get("pagerduty_routing_key") or os.getenv("PAGERDUTY_ROUTING_KEY", "")
+        self._routing_key = kwargs.get("pagerduty_routing_key") or os.getenv(
+            "PAGERDUTY_ROUTING_KEY", ""
+        )
         # Allow overriding severity map via env var (JSON string)
         custom_map = os.getenv("PAGERDUTY_SEVERITY_MAP")
         if custom_map:
@@ -103,9 +105,7 @@ class PagerDutyDispatcher(AlertDispatcher):
                 )
                 return True
             else:
-                logger.error(
-                    "PagerDuty API returned %d: %s", resp.status_code, resp.text
-                )
+                logger.error("PagerDuty API returned %d: %s", resp.status_code, resp.text)
                 return False
         except Exception as exc:
             logger.error("Failed to send PagerDuty alert: %s", exc)

@@ -45,6 +45,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("Failed to run Alembic migrations — falling back to create_all.")
         from backend.models import Base, engine
+
         Base.metadata.create_all(bind=engine)
     logger.info(
         "\n"
@@ -115,9 +116,21 @@ app.include_router(
     tags=["FinOps"],
     dependencies=[Depends(verify_api_key)],
 )
-app.include_router(profiling.router, prefix="/profiling", tags=["Column Profiling"], dependencies=[Depends(verify_api_key)])
-app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"], dependencies=[Depends(verify_api_key)])
-app.include_router(suppressions.router, prefix="/suppress", tags=["Suppressions"], dependencies=[Depends(verify_api_key)])
+app.include_router(
+    profiling.router,
+    prefix="/profiling",
+    tags=["Column Profiling"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    webhooks.router, prefix="/webhooks", tags=["Webhooks"], dependencies=[Depends(verify_api_key)]
+)
+app.include_router(
+    suppressions.router,
+    prefix="/suppress",
+    tags=["Suppressions"],
+    dependencies=[Depends(verify_api_key)],
+)
 app.include_router(
     distribution.router,
     prefix="/distribution",
@@ -143,6 +156,7 @@ if _STATIC_DIR.exists():
         if index.exists():
             return FileResponse(str(index))
         return {"detail": "Dashboard not built. Run: make ui-build"}
+
 
 @app.get("/", tags=["Health"])
 async def root():
@@ -233,34 +247,38 @@ async def get_status():
         # Freshness: latest status per table
         freshness_subq = (
             db.query(
-                FreshnessRecord.table_name,
-                sqlfunc.max(FreshnessRecord.checked_at).label("latest")
+                FreshnessRecord.table_name, sqlfunc.max(FreshnessRecord.checked_at).label("latest")
             )
             .filter(FreshnessRecord.checked_at >= cutoff_24h)
             .group_by(FreshnessRecord.table_name)
             .subquery()
         )
-        freshness_latest = db.query(FreshnessRecord).join(
-            freshness_subq,
-            (FreshnessRecord.table_name == freshness_subq.c.table_name) &
-            (FreshnessRecord.checked_at == freshness_subq.c.latest)
-        ).all()
+        freshness_latest = (
+            db.query(FreshnessRecord)
+            .join(
+                freshness_subq,
+                (FreshnessRecord.table_name == freshness_subq.c.table_name)
+                & (FreshnessRecord.checked_at == freshness_subq.c.latest),
+            )
+            .all()
+        )
 
         # Volume: latest anomaly status per table
         volume_subq = (
-            db.query(
-                VolumeRecord.table_name,
-                sqlfunc.max(VolumeRecord.recorded_at).label("latest")
-            )
+            db.query(VolumeRecord.table_name, sqlfunc.max(VolumeRecord.recorded_at).label("latest"))
             .filter(VolumeRecord.recorded_at >= cutoff_24h)
             .group_by(VolumeRecord.table_name)
             .subquery()
         )
-        volume_latest = db.query(VolumeRecord).join(
-            volume_subq,
-            (VolumeRecord.table_name == volume_subq.c.table_name) &
-            (VolumeRecord.recorded_at == volume_subq.c.latest)
-        ).all()
+        volume_latest = (
+            db.query(VolumeRecord)
+            .join(
+                volume_subq,
+                (VolumeRecord.table_name == volume_subq.c.table_name)
+                & (VolumeRecord.recorded_at == volume_subq.c.latest),
+            )
+            .all()
+        )
 
         # Quality: pass/fail counts per table in last 24h
         quality_rows = (
@@ -291,21 +309,48 @@ async def get_status():
         tables: dict = {}
 
         for f in freshness_latest:
-            t = tables.setdefault(f.table_name, {"name": f.table_name, "freshness": "ok", "volume": "ok",
-                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            t = tables.setdefault(
+                f.table_name,
+                {
+                    "name": f.table_name,
+                    "freshness": "ok",
+                    "volume": "ok",
+                    "quality": "ok",
+                    "schema": "ok",
+                    "last_checked": None,
+                },
+            )
             t["freshness"] = f.status  # ok | warn | fail
             t["last_checked"] = f.checked_at.isoformat()
 
         for v in volume_latest:
-            t = tables.setdefault(v.table_name, {"name": v.table_name, "freshness": "ok", "volume": "ok",
-                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            t = tables.setdefault(
+                v.table_name,
+                {
+                    "name": v.table_name,
+                    "freshness": "ok",
+                    "volume": "ok",
+                    "quality": "ok",
+                    "schema": "ok",
+                    "last_checked": None,
+                },
+            )
             t["volume"] = "fail" if v.is_anomaly else "ok"
             if not t["last_checked"] or v.recorded_at.isoformat() > t["last_checked"]:
                 t["last_checked"] = v.recorded_at.isoformat()
 
         for q in quality_rows:
-            t = tables.setdefault(q.table_name, {"name": q.table_name, "freshness": "ok", "volume": "ok",
-                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            t = tables.setdefault(
+                q.table_name,
+                {
+                    "name": q.table_name,
+                    "freshness": "ok",
+                    "volume": "ok",
+                    "quality": "ok",
+                    "schema": "ok",
+                    "last_checked": None,
+                },
+            )
             passed = int(q.passed or 0)
             total = int(q.total or 0)
             rate = (passed / total) if total > 0 else 1.0
@@ -315,8 +360,17 @@ async def get_status():
                 t["last_checked"] = q.latest.isoformat()
 
         for s in schema_rows:
-            t = tables.setdefault(s.table_name, {"name": s.table_name, "freshness": "ok", "volume": "ok",
-                                                  "quality": "ok", "schema": "ok", "last_checked": None})
+            t = tables.setdefault(
+                s.table_name,
+                {
+                    "name": s.table_name,
+                    "freshness": "ok",
+                    "volume": "ok",
+                    "quality": "ok",
+                    "schema": "ok",
+                    "last_checked": None,
+                },
+            )
             t["schema"] = "fail" if int(s.drifts) > 0 else "ok"
             if not t["last_checked"] or s.latest.isoformat() > t["last_checked"]:
                 t["last_checked"] = s.latest.isoformat()
@@ -340,9 +394,9 @@ async def get_status():
         }
 
         # Active suppressions
-        active_suppressions = db.query(CheckSuppression).filter(
-            CheckSuppression.suppressed_until >= now
-        ).count()
+        active_suppressions = (
+            db.query(CheckSuppression).filter(CheckSuppression.suppressed_until >= now).count()
+        )
 
         # Last run timestamps per pillar (global)
         last_freshness = db.query(sqlfunc.max(FreshnessRecord.checked_at)).scalar()
@@ -356,7 +410,9 @@ async def get_status():
             "summary": summary,
             "tables": table_list,
             "pillars": {
-                "freshness": {"last_checked": last_freshness.isoformat() if last_freshness else None},
+                "freshness": {
+                    "last_checked": last_freshness.isoformat() if last_freshness else None
+                },
                 "volume": {"last_checked": last_volume.isoformat() if last_volume else None},
                 "quality": {"last_checked": last_quality.isoformat() if last_quality else None},
                 "schema": {"last_detected": last_schema.isoformat() if last_schema else None},
@@ -365,7 +421,6 @@ async def get_status():
         }
     finally:
         db.close()
-
 
 
 @app.get("/scheduler/jobs", tags=["Scheduler"], dependencies=[Depends(verify_api_key)])

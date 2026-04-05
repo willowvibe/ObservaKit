@@ -43,13 +43,14 @@ distribution_drift_gauge = Gauge(
     ["table", "column"],
 )
 
-TOP_N = 20           # How many top values to track for categoricals
-BUCKET_COUNT = 10    # Histogram buckets for numerics
+TOP_N = 20  # How many top values to track for categoricals
+BUCKET_COUNT = 10  # Histogram buckets for numerics
 
 
 # ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post("/snapshot")
 def take_distribution_snapshot(
@@ -77,6 +78,7 @@ def take_distribution_snapshot(
         return {"message": "No tables configured for distribution monitoring"}
 
     from connectors.base import get_warehouse_connector
+
     connector = get_warehouse_connector()
 
     results = []
@@ -152,16 +154,18 @@ def take_distribution_snapshot(
                                 f"Current:  {drift_result.get('current_value')}"
                             ),
                             db=db,
-                            severity="warn"
+                            severity="warn",
                         )
 
-                results.append({
-                    "table": tname,
-                    "column": col_name,
-                    "type": col_type,
-                    "snapshot_taken": True,
-                    "drift": drift_result,
-                })
+                results.append(
+                    {
+                        "table": tname,
+                        "column": col_name,
+                        "type": col_type,
+                        "snapshot_taken": True,
+                        "drift": drift_result,
+                    }
+                )
 
             except Exception as e:
                 logger.error(f"Distribution snapshot failed for {tname}.{col_name}: {e}")
@@ -237,6 +241,7 @@ def get_distribution_history(
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
 
 def _snapshot_categorical(connector, table: str, column: str, top_n: int) -> dict:
     """
@@ -354,12 +359,14 @@ def _snapshot_numeric(connector, table: str, column: str) -> dict:
                 WHERE {column} >= {low} AND {column} {op} {high}
                 """
             )
-            histogram.append({
-                "bucket": i + 1,
-                "range_low": round(low, 4),
-                "range_high": round(high, 4),
-                "count": int(count_result[0]["cnt"]) if count_result else 0,
-            })
+            histogram.append(
+                {
+                    "bucket": i + 1,
+                    "range_low": round(low, 4),
+                    "range_high": round(high, 4),
+                    "count": int(count_result[0]["cnt"]) if count_result else 0,
+                }
+            )
 
     return {
         "total_rows": total_rows,

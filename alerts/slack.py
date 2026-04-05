@@ -25,10 +25,10 @@ from alerts.base import AlertDispatcher
 logger = logging.getLogger(__name__)
 
 _SEVERITY_COLOUR = {
-    "fail": "#d63031",   # red
-    "warn": "#fdcb6e",   # yellow
-    "info": "#74b9ff",   # blue
-    "ok": "#00b894",     # green
+    "fail": "#d63031",  # red
+    "warn": "#fdcb6e",  # yellow
+    "info": "#74b9ff",  # blue
+    "ok": "#00b894",  # green
 }
 
 
@@ -50,7 +50,9 @@ class SlackDispatcher(AlertDispatcher):
         blocks: list = None,
         **kwargs,
     ) -> bool:
-        if not self._webhook_url or self._webhook_url.startswith("https://hooks.slack.com/services/YOUR"):
+        if not self._webhook_url or self._webhook_url.startswith(
+            "https://hooks.slack.com/services/YOUR"
+        ):
             logger.warning("Slack webhook URL not configured — skipping alert")
             return False
 
@@ -145,19 +147,24 @@ class SlackDispatcher(AlertDispatcher):
                     return True
 
                 if resp.status_code == 429:
-                    retry_after = int(resp.headers.get("Retry-After", 2 ** attempt))
+                    retry_after = int(resp.headers.get("Retry-After", 2**attempt))
                     logger.warning(
                         "Slack rate limited (429) — retrying in %ds (attempt %d/%d)",
-                        retry_after, attempt, max_attempts,
+                        retry_after,
+                        attempt,
+                        max_attempts,
                     )
                     time.sleep(retry_after)
                     continue
 
                 if resp.status_code >= 500:
-                    backoff = 2 ** attempt
+                    backoff = 2**attempt
                     logger.warning(
                         "Slack 5xx (%d) — retrying in %ds (attempt %d/%d)",
-                        resp.status_code, backoff, attempt, max_attempts,
+                        resp.status_code,
+                        backoff,
+                        attempt,
+                        max_attempts,
                     )
                     time.sleep(backoff)
                     continue
@@ -167,10 +174,13 @@ class SlackDispatcher(AlertDispatcher):
                 return False
 
             except Exception as exc:
-                backoff = 2 ** attempt
+                backoff = 2**attempt
                 logger.warning(
                     "Slack request error: %s — retrying in %ds (attempt %d/%d)",
-                    exc, backoff, attempt, max_attempts,
+                    exc,
+                    backoff,
+                    attempt,
+                    max_attempts,
                 )
                 if attempt < max_attempts:
                     time.sleep(backoff)

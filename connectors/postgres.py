@@ -11,6 +11,7 @@ from typing import Optional
 import psycopg2
 import psycopg2.extras
 
+from backend.security import is_safe_identifier, is_safe_table_reference
 from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
@@ -42,13 +43,12 @@ class PostgresConnector(WarehouseConnector):
 
     @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
-        """Get the max value of a timestamp column."""
+        if not is_safe_table_reference(table) or not is_safe_identifier(column):
+            raise ValueError(f"Invalid table/column reference: table={table}, column={column}")
         conn = self.connect()
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    f"SELECT MAX({column}) FROM {table}"
-                )
+                cur.execute(f"SELECT MAX({column}) FROM {table}")
                 result = cur.fetchone()
                 return result[0] if result and result[0] else None
         except Exception as e:
@@ -58,7 +58,8 @@ class PostgresConnector(WarehouseConnector):
 
     @resilient_query()
     def get_row_count(self, table: str) -> int:
-        """Get the current row count of a table."""
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         conn = self.connect()
         try:
             with conn.cursor() as cur:
@@ -146,4 +147,3 @@ class PostgresConnector(WarehouseConnector):
                 },
             },
         }
-

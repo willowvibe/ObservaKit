@@ -2,7 +2,6 @@
 ObservaKit — Schema Drift Detection Tests
 """
 
-
 from backend.models import SchemaDiff, SchemaSnapshot
 from backend.routers.schema_diff import _compute_diff
 

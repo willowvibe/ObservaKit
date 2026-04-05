@@ -22,6 +22,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
+from backend.security import is_safe_identifier, is_safe_table_reference
 from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,8 @@ class TrinoConnector(WarehouseConnector):
 
     @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
+        if not is_safe_table_reference(table) or not is_safe_identifier(column):
+            raise ValueError(f"Invalid table/column reference: table={table}, column={column}")
         conn = self.connect()
         try:
             with conn.cursor() as cur:
@@ -109,6 +112,8 @@ class TrinoConnector(WarehouseConnector):
 
     @resilient_query()
     def get_row_count(self, table: str) -> int:
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         conn = self.connect()
         try:
             with conn.cursor() as cur:
@@ -125,6 +130,8 @@ class TrinoConnector(WarehouseConnector):
         Return column metadata from information_schema.columns.
         Trino uses three-part naming: catalog.schema.table.
         """
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         conn = self.connect()
         try:
             parts = table.split(".")
@@ -137,6 +144,14 @@ class TrinoConnector(WarehouseConnector):
                 catalog = self._catalog
                 schema = self._schema
                 tbl = table
+
+            # Validate catalog, schema, and table names individually
+            if (
+                not is_safe_identifier(catalog)
+                or not is_safe_identifier(schema)
+                or not is_safe_identifier(tbl)
+            ):
+                raise ValueError(f"Invalid identifier in table reference: {table}")
 
             with conn.cursor() as cur:
                 cur.execute(

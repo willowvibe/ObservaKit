@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
+from backend.security import is_safe_identifier, is_safe_table_reference
 from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,11 @@ class BigQueryConnector(WarehouseConnector):
     @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
         """Get the max value of a timestamp column."""
+        if not is_safe_table_reference(table) or not is_safe_identifier(column):
+            raise ValueError(f"Invalid table/column reference: table={table}, column={column}")
         client = self.connect()
         full_table = f"{self._project}.{self._dataset}.{table.split('.')[-1]}"
+        # Backtick-escape the column name (table is validated by is_safe_table_reference)
         query = f"SELECT MAX(`{column}`) as max_ts FROM `{full_table}`"
 
         try:
@@ -65,6 +69,8 @@ class BigQueryConnector(WarehouseConnector):
 
     @resilient_query()
     def get_row_count(self, table: str) -> int:
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         """Get the current row count of a table."""
         client = self.connect()
         full_table = f"{self._project}.{self._dataset}.{table.split('.')[-1]}"
@@ -82,8 +88,14 @@ class BigQueryConnector(WarehouseConnector):
     @resilient_query()
     def get_schema(self, table: str) -> list[dict]:
         """Get schema from INFORMATION_SCHEMA.COLUMNS."""
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         client = self.connect()
         table_name = table.split(".")[-1]
+        # Validate table name (already done by is_safe_table_reference on full reference)
+        # But also validate the extracted table name
+        if not is_safe_identifier(table_name):
+            raise ValueError(f"Invalid table name: {table_name}")
         query = f"""
             SELECT
                 column_name AS name,
@@ -125,6 +137,8 @@ class BigQueryConnector(WarehouseConnector):
     @resilient_query()
     def get_compute_costs(self, days: int = 7) -> float:
         """Get total bytes billed over the last N days from INFORMATION_SCHEMA.JOBS."""
+        # Ensure days is an integer to prevent SQL injection
+        days = int(days)
         client = self.connect()
         # Note: region must be specified; defaulting to region-us for demo purposes.
         query = f"""
@@ -150,7 +164,7 @@ class BigQueryConnector(WarehouseConnector):
                     "project_id": self._project,
                     "dataset": self._dataset,
                     "account_info_json_path": self._credentials_path,
-                }
+                },
             }
         }
 

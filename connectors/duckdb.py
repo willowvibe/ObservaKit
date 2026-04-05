@@ -18,6 +18,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
+from backend.security import is_safe_identifier, is_safe_table_reference
 from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,8 @@ class DuckDBConnector(WarehouseConnector):
 
     @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
+        if not is_safe_table_reference(table) or not is_safe_identifier(column):
+            raise ValueError(f"Invalid table/column reference: table={table}, column={column}")
         conn = self.connect()
         try:
             result = conn.execute(f"SELECT MAX({column}) FROM {table}").fetchone()
@@ -78,6 +81,8 @@ class DuckDBConnector(WarehouseConnector):
 
     @resilient_query()
     def get_row_count(self, table: str) -> int:
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         conn = self.connect()
         try:
             result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
@@ -92,6 +97,8 @@ class DuckDBConnector(WarehouseConnector):
         Return column metadata for a DuckDB table using PRAGMA table_info().
         Falls back to information_schema when the table is not a base table.
         """
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         conn = self.connect()
         try:
             rows = conn.execute(f"PRAGMA table_info('{table}')").fetchall()
@@ -108,6 +115,9 @@ class DuckDBConnector(WarehouseConnector):
                 ]
             # Fallback: information_schema (works for views / virtual tables)
             schema, tbl = ("main", table) if "." not in table else table.split(".", 1)
+            # Validate schema and table names
+            if not is_safe_identifier(schema) or not is_safe_identifier(tbl):
+                raise ValueError(f"Invalid identifier in table reference: {table}")
             rows = conn.execute(
                 """
                 SELECT column_name, data_type, is_nullable, ordinal_position

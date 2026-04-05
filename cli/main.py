@@ -28,6 +28,7 @@ import sys
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _api_url() -> str:
     return os.getenv("OBSERVAKIT_API_URL", "http://localhost:8000")
 
@@ -76,6 +77,7 @@ def _status_icon(s: str) -> str:
 # Sub-commands
 # ---------------------------------------------------------------------------
 
+
 def cmd_status(args) -> int:
     """Print a health summary of all monitored tables."""
     output_json = getattr(args, "output", None) == "json"
@@ -92,9 +94,7 @@ def cmd_status(args) -> int:
         print(json.dumps(data, indent=2))
         tables = data.get("tables", [])
         any_fail = any(
-            t.get(p) == "fail"
-            for t in tables
-            for p in ("freshness", "volume", "quality", "schema")
+            t.get(p) == "fail" for t in tables for p in ("freshness", "volume", "quality", "schema")
         )
         return 1 if any_fail else 0
 
@@ -102,7 +102,9 @@ def cmd_status(args) -> int:
     tables = data.get("tables", [])
 
     print(f"\n🔭 ObservaKit Status  (window: {data.get('window_hours', 24)}h)")
-    print(f"   Healthy: {summary.get('healthy', 0)}  Warn: {summary.get('warn', 0)}  Fail: {summary.get('fail', 0)}\n")
+    print(
+        f"   Healthy: {summary.get('healthy', 0)}  Warn: {summary.get('warn', 0)}  Fail: {summary.get('fail', 0)}\n"
+    )
 
     if not tables:
         print("   No monitored tables found in the last 24 hours.")
@@ -231,6 +233,7 @@ def cmd_validate_config(args) -> int:
     # 1. Load and parse kit.yml
     try:
         from config.loader import load_config
+
         config = load_config(config_path)
     except FileNotFoundError:
         print(f"❌ Config file not found: {config_path}")
@@ -266,7 +269,9 @@ def cmd_validate_config(args) -> int:
     default_channel = alerts_cfg.get("default_channel")
     supported_channels = {"slack", "email", "discord", "webhook", "teams", "pagerduty"}
     if default_channel and default_channel not in supported_channels:
-        errors.append(f"alerts.default_channel '{default_channel}' is not supported (supported: {', '.join(sorted(supported_channels))})")
+        errors.append(
+            f"alerts.default_channel '{default_channel}' is not supported (supported: {', '.join(sorted(supported_channels))})"
+        )
 
     for i, rule in enumerate(alerts_cfg.get("routing", [])):
         if not rule.get("channel"):
@@ -278,6 +283,7 @@ def cmd_validate_config(args) -> int:
     import os as _os
 
     import yaml
+
     contract_files = _glob.glob(f"{contracts_dir}/*.yml") if _os.path.isdir(contracts_dir) else []
     contract_errors = 0
     for cf in contract_files:
@@ -303,7 +309,9 @@ def cmd_validate_config(args) -> int:
     sections = list(config.keys())
     print(f"✅ Config valid — sections: {', '.join(sections)}")
     if contract_files:
-        print(f"   Contracts validated: {len(contract_files) - contract_errors}/{len(contract_files)}")
+        print(
+            f"   Contracts validated: {len(contract_files) - contract_errors}/{len(contract_files)}"
+        )
     return 0
 
 
@@ -328,7 +336,9 @@ def cmd_diff(args) -> int:
     for d in diffs:
         old_v = d.get("old_value", "") or ""
         new_v = d.get("new_value", "") or ""
-        print(f"   {d.get('table_name', ''):<35} {d.get('change_type', ''):<18} {d.get('column_name', ''):<25} {old_v:<20} {new_v}")
+        print(
+            f"   {d.get('table_name', ''):<35} {d.get('change_type', ''):<18} {d.get('column_name', ''):<25} {old_v:<20} {new_v}"
+        )
     print(f"\n   {len(diffs)} change(s) detected.")
     return 1  # exit 1 when drift found — useful for CI gates
 
@@ -351,7 +361,9 @@ def cmd_init(args) -> int:
     print("\nQ: Do you have a Slack Webhook URL for alerts? (Leave blank to skip)")
     slack_url = input("> ").strip()
 
-    print("\nQ: What is the main table you want to monitor for data freshness? (e.g. public.orders)")
+    print(
+        "\nQ: What is the main table you want to monitor for data freshness? (e.g. public.orders)"
+    )
     table_name = input("> [public.orders]: ").strip() or "public.orders"
 
     yaml_content = f"""# ObservaKit Configuration
@@ -398,34 +410,38 @@ volume:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         prog="observakit",
         description="ObservaKit CLI — data observability for small teams",
     )
     parser.add_argument(
-        "--url", default=None,
-        help="ObservaKit API URL (default: $OBSERVAKIT_API_URL or http://localhost:8000)"
+        "--url",
+        default=None,
+        help="ObservaKit API URL (default: $OBSERVAKIT_API_URL or http://localhost:8000)",
     )
+    parser.add_argument("--api-key", default=None, help="API key (default: $OBSERVAKIT_API_KEY)")
     parser.add_argument(
-        "--api-key", default=None,
-        help="API key (default: $OBSERVAKIT_API_KEY)"
-    )
-    parser.add_argument(
-        "--config", default=None,
-        help="Path to kit.yml (default: $OBSERVAKIT_CONFIG or config/kit.yml)"
+        "--config",
+        default=None,
+        help="Path to kit.yml (default: $OBSERVAKIT_CONFIG or config/kit.yml)",
     )
 
     sub = parser.add_subparsers(dest="command", required=True)
 
     # status
     p_status = sub.add_parser("status", help="Print health status of all monitored tables")
-    p_status.add_argument("--output", choices=["json"], default=None, help="Output format (json for scripting/CI)")
+    p_status.add_argument(
+        "--output", choices=["json"], default=None, help="Output format (json for scripting/CI)"
+    )
 
     # check
     p_check = sub.add_parser("check", help="Run quality checks")
     p_check.add_argument("--dry-run", action="store_true", help="Preview without writing results")
-    p_check.add_argument("--output", choices=["json"], default=None, help="Output format (json for scripting/CI)")
+    p_check.add_argument(
+        "--output", choices=["json"], default=None, help="Output format (json for scripting/CI)"
+    )
 
     # profile
     p_profile = sub.add_parser("profile", help="Run column profiling for a table")
@@ -434,7 +450,9 @@ def main():
     # suppress
     p_suppress = sub.add_parser("suppress", help="Suppress alerts for a table")
     p_suppress.add_argument("table", help="Table name")
-    p_suppress.add_argument("--minutes", type=int, default=60, help="Duration in minutes (default: 60)")
+    p_suppress.add_argument(
+        "--minutes", type=int, default=60, help="Duration in minutes (default: 60)"
+    )
     p_suppress.add_argument("--reason", default=None, help="Reason for suppression")
 
     # init
@@ -444,9 +462,15 @@ def main():
     sub.add_parser("test-alert", help="Fire a test alert to configured channels")
 
     # validate-config
-    p_validate = sub.add_parser("validate-config", help="Dry-run parse kit.yml without connecting to warehouse")
-    p_validate.add_argument("--config", dest="config", default=None,
-                            help="Path to kit.yml to validate (overrides --config at top level)")
+    p_validate = sub.add_parser(
+        "validate-config", help="Dry-run parse kit.yml without connecting to warehouse"
+    )
+    p_validate.add_argument(
+        "--config",
+        dest="config",
+        default=None,
+        help="Path to kit.yml to validate (overrides --config at top level)",
+    )
 
     # diff
     p_diff = sub.add_parser("diff", help="Show schema changes vs last saved snapshot")

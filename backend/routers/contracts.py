@@ -66,6 +66,7 @@ from sqlalchemy.orm import Session
 from alerts.base import dispatch_alert
 from backend.models import ContractValidationResult, get_db
 from backend.routers.checks import _safe_eval_assertion
+from backend.security import is_safe_identifier, is_safe_table_reference
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ CONTRACTS_DIR = os.getenv("CONTRACTS_DIR", "config/contracts/")
 # ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post("/validate")
 def validate_contracts(
@@ -92,6 +94,7 @@ def validate_contracts(
         return {"message": f"No contract files found in {CONTRACTS_DIR}"}
 
     from connectors.base import get_warehouse_connector
+
     connector = get_warehouse_connector()
 
     all_results = []
@@ -116,20 +119,47 @@ def validate_contracts(
 
         violations = []
 
+        # --- Validate table reference before use ---
+        if not is_safe_table_reference(table):
+            logger.error(f"Contract {cid}: invalid table reference '{table}' — skipping")
+            violations.append(
+                {
+                    "rule": "schema_fetch",
+                    "passed": False,
+                    "detail": f"Invalid table reference: {table}",
+                }
+            )
+            continue
+
         # --- Column presence and type checks ---
         try:
             live_schema = {col["name"]: col for col in connector.get_schema(table)}
         except Exception as e:
             logger.error(f"Could not fetch schema for {table}: {e}")
-            violations.append({
-                "rule": "schema_fetch",
-                "passed": False,
-                "detail": f"Could not connect to table: {e}",
-            })
+            violations.append(
+                {
+                    "rule": "schema_fetch",
+                    "passed": False,
+                    "detail": f"Could not connect to table: {e}",
+                }
+            )
             live_schema = {}
 
         for col_spec in contract.get("columns", []):
             col_name = col_spec["name"]
+            # Validate column name before use in SQL
+            if not col_name or not is_safe_identifier(col_name):
+                logger.error(
+                    f"Contract {cid}: invalid column name '{col_name}' — skipping column checks"
+                )
+                violations.append(
+                    {
+                        "rule": f"column_check:{col_name}",
+                        "passed": False,
+                        "detail": f"Invalid column name: {col_name}",
+                    }
+                )
+                continue
             expected_type = col_spec.get("type", "").lower()
             nullable = col_spec.get("nullable", True)
             unique = col_spec.get("unique", False)
@@ -139,25 +169,31 @@ def validate_contracts(
 
             # Column existence
             if col_name not in live_schema:
-                violations.append({
-                    "rule": f"column_exists:{col_name}",
-                    "passed": False,
-                    "detail": f"Column '{col_name}' is missing from {table}",
-                })
+                violations.append(
+                    {
+                        "rule": f"column_exists:{col_name}",
+                        "passed": False,
+                        "detail": f"Column '{col_name}' is missing from {table}",
+                    }
+                )
                 continue
 
             live_col = live_schema[col_name]
 
             # Type check (case-insensitive prefix match — e.g. "integer" matches "integer4")
-            if expected_type and not live_col.get("type", "").lower().startswith(expected_type.replace(" ", "_")):
-                violations.append({
-                    "rule": f"column_type:{col_name}",
-                    "passed": False,
-                    "detail": (
-                        f"Column '{col_name}' expected type '{expected_type}', "
-                        f"got '{live_col.get('type')}'"
-                    ),
-                })
+            if expected_type and not live_col.get("type", "").lower().startswith(
+                expected_type.replace(" ", "_")
+            ):
+                violations.append(
+                    {
+                        "rule": f"column_type:{col_name}",
+                        "passed": False,
+                        "detail": (
+                            f"Column '{col_name}' expected type '{expected_type}', "
+                            f"got '{live_col.get('type')}'"
+                        ),
+                    }
+                )
 
             # Nullable constraint
             if not nullable:
@@ -166,13 +202,17 @@ def validate_contracts(
                         f"SELECT COUNT(*) AS cnt FROM {table} WHERE {col_name} IS NULL"
                     )
                     null_count = int(null_result[0]["cnt"]) if null_result else 0
-                    violations.append({
-                        "rule": f"not_null:{col_name}",
-                        "passed": null_count == 0,
-                        "detail": f"{null_count} null values found in '{col_name}' (must be 0)",
-                    })
+                    violations.append(
+                        {
+                            "rule": f"not_null:{col_name}",
+                            "passed": null_count == 0,
+                            "detail": f"{null_count} null values found in '{col_name}' (must be 0)",
+                        }
+                    )
                 except Exception as e:
-                    violations.append({"rule": f"not_null:{col_name}", "passed": False, "detail": str(e)})
+                    violations.append(
+                        {"rule": f"not_null:{col_name}", "passed": False, "detail": str(e)}
+                    )
 
             # Uniqueness constraint
             if unique:
@@ -186,13 +226,17 @@ def validate_contracts(
                         """
                     )
                     dup_count = int(dup_result[0]["cnt"]) if dup_result else 0
-                    violations.append({
-                        "rule": f"unique:{col_name}",
-                        "passed": dup_count == 0,
-                        "detail": f"{dup_count} duplicate values found in '{col_name}'",
-                    })
+                    violations.append(
+                        {
+                            "rule": f"unique:{col_name}",
+                            "passed": dup_count == 0,
+                            "detail": f"{dup_count} duplicate values found in '{col_name}'",
+                        }
+                    )
                 except Exception as e:
-                    violations.append({"rule": f"unique:{col_name}", "passed": False, "detail": str(e)})
+                    violations.append(
+                        {"rule": f"unique:{col_name}", "passed": False, "detail": str(e)}
+                    )
 
             # Allowed values check
             if allowed_values:
@@ -209,16 +253,20 @@ def validate_contracts(
                         """
                     )
                     invalid_count = int(invalid_result[0]["cnt"]) if invalid_result else 0
-                    violations.append({
-                        "rule": f"allowed_values:{col_name}",
-                        "passed": invalid_count == 0,
-                        "detail": (
-                            f"{invalid_count} rows have values outside allowed set "
-                            f"{allowed_values} in '{col_name}'"
-                        ),
-                    })
+                    violations.append(
+                        {
+                            "rule": f"allowed_values:{col_name}",
+                            "passed": invalid_count == 0,
+                            "detail": (
+                                f"{invalid_count} rows have values outside allowed set "
+                                f"{allowed_values} in '{col_name}'"
+                            ),
+                        }
+                    )
                 except Exception as e:
-                    violations.append({"rule": f"allowed_values:{col_name}", "passed": False, "detail": str(e)})
+                    violations.append(
+                        {"rule": f"allowed_values:{col_name}", "passed": False, "detail": str(e)}
+                    )
 
             # Min / max range
             if min_val is not None:
@@ -227,13 +275,17 @@ def validate_contracts(
                         f"SELECT COUNT(*) AS cnt FROM {table} WHERE {col_name} < {min_val}"
                     )
                     below_count = int(below_result[0]["cnt"]) if below_result else 0
-                    violations.append({
-                        "rule": f"min_value:{col_name}",
-                        "passed": below_count == 0,
-                        "detail": f"{below_count} rows have {col_name} < {min_val}",
-                    })
+                    violations.append(
+                        {
+                            "rule": f"min_value:{col_name}",
+                            "passed": below_count == 0,
+                            "detail": f"{below_count} rows have {col_name} < {min_val}",
+                        }
+                    )
                 except Exception as e:
-                    violations.append({"rule": f"min_value:{col_name}", "passed": False, "detail": str(e)})
+                    violations.append(
+                        {"rule": f"min_value:{col_name}", "passed": False, "detail": str(e)}
+                    )
 
             if max_val is not None:
                 try:
@@ -241,13 +293,17 @@ def validate_contracts(
                         f"SELECT COUNT(*) AS cnt FROM {table} WHERE {col_name} > {max_val}"
                     )
                     above_count = int(above_result[0]["cnt"]) if above_result else 0
-                    violations.append({
-                        "rule": f"max_value:{col_name}",
-                        "passed": above_count == 0,
-                        "detail": f"{above_count} rows have {col_name} > {max_val}",
-                    })
+                    violations.append(
+                        {
+                            "rule": f"max_value:{col_name}",
+                            "passed": above_count == 0,
+                            "detail": f"{above_count} rows have {col_name} > {max_val}",
+                        }
+                    )
                 except Exception as e:
-                    violations.append({"rule": f"max_value:{col_name}", "passed": False, "detail": str(e)})
+                    violations.append(
+                        {"rule": f"max_value:{col_name}", "passed": False, "detail": str(e)}
+                    )
 
         # --- Volume check ---
         volume_spec = contract.get("volume", {})
@@ -256,19 +312,36 @@ def validate_contracts(
                 count_result = connector.execute_query(f"SELECT COUNT(*) AS cnt FROM {table}")
                 row_count = int(count_result[0]["cnt"]) if count_result else 0
                 min_rows = int(volume_spec["min_rows"])
-                violations.append({
-                    "rule": "min_rows",
-                    "passed": row_count >= min_rows,
-                    "detail": f"Row count {row_count:,} (required ≥ {min_rows:,})",
-                })
+                violations.append(
+                    {
+                        "rule": "min_rows",
+                        "passed": row_count >= min_rows,
+                        "detail": f"Row count {row_count:,} (required ≥ {min_rows:,})",
+                    }
+                )
             except Exception as e:
                 violations.append({"rule": "min_rows", "passed": False, "detail": str(e)})
 
         # --- Custom SQL rules ---
+        # Only allow SELECT queries for custom rules (no DDL, DML, or dangerous statements)
+        allowed_start_patterns = ("select", "with")  # Case-insensitive, lowercase for comparison
         for rule_spec in contract.get("rules", []):
             rule_name = rule_spec.get("name", "custom_rule")
-            sql = rule_spec.get("sql", "")
+            sql = rule_spec.get("sql", "").strip()
             assertion = rule_spec.get("assert", "result == 0")
+
+            # Validate SQL starts with SELECT or WITH
+            sql_lower = sql.lower()
+            if not any(sql_lower.startswith(pattern) for pattern in allowed_start_patterns):
+                violations.append(
+                    {
+                        "rule": rule_name,
+                        "passed": False,
+                        "detail": f"Custom SQL rules must start with SELECT or WITH; got: {sql[:50]}",
+                    }
+                )
+                continue
+
             try:
                 rule_result = connector.execute_query(sql)
                 result_value = 0
@@ -280,11 +353,13 @@ def validate_contracts(
                 except Exception:
                     passed = False
 
-                violations.append({
-                    "rule": rule_name,
-                    "passed": passed,
-                    "detail": f"SQL returned {result_value}; assertion '{assertion}' → {passed}",
-                })
+                violations.append(
+                    {
+                        "rule": rule_name,
+                        "passed": passed,
+                        "detail": f"SQL returned {result_value}; assertion '{assertion}' → {passed}",
+                    }
+                )
             except Exception as e:
                 violations.append({"rule": rule_name, "passed": False, "detail": str(e)})
 
@@ -317,18 +392,20 @@ def validate_contracts(
                     f"Failed rules: {', '.join(failed_rules)}"
                 ),
                 db=db,
-                severity="fail"
+                severity="fail",
             )
 
-        all_results.append({
-            "contract_id": cid,
-            "version": contract.get("version"),
-            "table": table,
-            "passed": contract_passed,
-            "total_rules": total,
-            "passed_rules": passed_count,
-            "violations": [v for v in violations if not v["passed"]],
-        })
+        all_results.append(
+            {
+                "contract_id": cid,
+                "version": contract.get("version"),
+                "table": table,
+                "passed": contract_passed,
+                "total_rules": total,
+                "passed_rules": passed_count,
+                "violations": [v for v in violations if not v["passed"]],
+            }
+        )
 
     db.commit()
     return {"contracts_validated": len(all_results), "results": all_results}
@@ -342,9 +419,8 @@ def get_contract_results(
     db: Session = Depends(get_db),
 ):
     """Return recent contract validation results."""
-    query = (
-        db.query(ContractValidationResult)
-        .order_by(ContractValidationResult.validated_at.desc())
+    query = db.query(ContractValidationResult).order_by(
+        ContractValidationResult.validated_at.desc()
     )
     if contract_id:
         query = query.filter(ContractValidationResult.contract_id == contract_id)

@@ -13,10 +13,10 @@ import yaml
 
 from backend.routers.checks import _safe_eval_assertion
 
-
 # ---------------------------------------------------------------------------
 # _safe_eval_assertion — core assertion evaluator
 # ---------------------------------------------------------------------------
+
 
 class TestSafeEvalAssertion:
     def test_result_equals_zero_passes(self):
@@ -57,6 +57,7 @@ class TestSafeEvalAssertion:
 # Contract YAML loading — test that the parser handles well-formed files
 # ---------------------------------------------------------------------------
 
+
 class TestContractYAMLLoading:
     def _write_contract(self, tmpdir: str, content: dict) -> str:
         path = os.path.join(tmpdir, "test_contract.yml")
@@ -73,8 +74,12 @@ class TestContractYAMLLoading:
                 "owner": "data-eng@example.com",
                 "columns": [
                     {"name": "id", "type": "integer", "nullable": False, "unique": True},
-                    {"name": "status", "type": "varchar", "nullable": False,
-                     "allowed_values": ["pending", "confirmed", "shipped"]},
+                    {
+                        "name": "status",
+                        "type": "varchar",
+                        "nullable": False,
+                        "allowed_values": ["pending", "confirmed", "shipped"],
+                    },
                     {"name": "amount", "type": "numeric", "nullable": False, "min": 0},
                 ],
                 "rules": [
@@ -130,6 +135,7 @@ class TestContractYAMLLoading:
 # ---------------------------------------------------------------------------
 # allowed_values check logic (pure Python simulation)
 # ---------------------------------------------------------------------------
+
 
 class TestAllowedValuesLogicSimulation:
     """
