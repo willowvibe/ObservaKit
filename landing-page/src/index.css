@@ -558,6 +558,184 @@ h2 {
   color: var(--text);
 }
 
+/* ── Stats Row ───────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 3rem 0 0;
+}
+
+@media (max-width: 600px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.75rem 1rem;
+  background: var(--surface);
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.stat-item .stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-item .stat-desc {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Integrations Strip ──────────────────────── */
+.integrations-section {
+  padding: 3rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 3rem 0;
+}
+
+.integrations-label {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin: 0 0 1.75rem;
+}
+
+.integrations-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 0.875rem;
+}
+
+.integrations-group:last-child { margin-bottom: 0; }
+
+.integrations-sublabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  min-width: 80px;
+  text-align: right;
+}
+
+.integrations-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.integration-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.integration-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+/* ── Comparison Table ────────────────────────── */
+.comparison-wrapper {
+  overflow-x: auto;
+  margin: 0 auto;
+  max-width: 860px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.comparison-table th {
+  padding: 0.875rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.comparison-table th:first-child {
+  text-align: left;
+  color: var(--text);
+}
+
+.comparison-table td {
+  padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.comparison-table td:first-child {
+  text-align: left;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.comparison-table tr:last-child td { border-bottom: none; }
+.comparison-table tbody tr:hover td { background: var(--surface); }
+
+.cmp-highlight-col {
+  background: rgba(99, 102, 241, 0.06) !important;
+}
+
+.cmp-highlight-col th {
+  color: var(--primary-light) !important;
+}
+
+.cmp-yes     { display: inline-flex; color: #10b981; }
+.cmp-no      { display: inline-flex; color: var(--text-tertiary); opacity: 0.5; }
+.cmp-partial { display: inline-flex; color: #f59e0b; }
+.cmp-text    { font-size: 0.8125rem; font-weight: 700; color: var(--text-secondary); }
+
+/* ObservaKit column — highlight the yes cells */
+.comparison-table td.cmp-highlight-col .cmp-yes  { color: var(--primary-light); }
+.comparison-table td.cmp-highlight-col .cmp-text { color: var(--primary-light); }
+
+.comparison-note {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  margin: 1.25rem auto 0;
+  max-width: 500px;
+  text-align: center;
+}
+
 /* ── Animations ──────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }

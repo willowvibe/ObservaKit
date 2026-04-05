@@ -11,7 +11,11 @@ import {
   RefreshCw,
   BellOff,
   Play,
-  XCircle
+  XCircle,
+  GitBranch,
+  Layers,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -140,6 +144,128 @@ function OverviewScreen() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Freshness screen — live lag data from /freshness/ */
+function FreshnessScreen() {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [polling, setPolling] = useState(false);
+  const [error, setError] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/freshness/?limit=100');
+      setRecords(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const poll = async () => {
+    setPolling(true);
+    try {
+      await apiFetch('/freshness/poll', { method: 'POST' });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setPolling(false);
+    }
+  };
+
+  const formatLag = (secs) => {
+    if (secs === null || secs === undefined) return '—';
+    if (secs < 60)    return `${Math.round(secs)}s`;
+    if (secs < 3600)  return `${Math.round(secs / 60)}m`;
+    if (secs < 86400) return `${(secs / 3600).toFixed(1)}h`;
+    return `${(secs / 86400).toFixed(1)}d`;
+  };
+
+  const healthy = records.filter(r => r.status === 'ok').length;
+  const warning = records.filter(r => r.status === 'warn').length;
+  const failing = records.filter(r => r.status === 'fail').length;
+
+  return (
+    <div className="screen">
+      <div className="screen-header">
+        <h2>Freshness</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-icon" onClick={load} title="Refresh"><RefreshCw size={16} /></button>
+          <button className="btn-primary" onClick={poll} disabled={polling}>
+            {polling ? <><Spinner /> Polling…</> : <><Play size={14} /> Poll Now</>}
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="screen-error">{error}</div>}
+
+      <div className="stat-row">
+        {[
+          { label: 'Healthy', value: healthy, color: 'green',  icon: <CheckCircle size={20} /> },
+          { label: 'Warning', value: warning, color: 'yellow', icon: <AlertTriangle size={20} /> },
+          { label: 'Stale',   value: failing, color: 'red',    icon: <XCircle size={20} /> },
+        ].map(({ label, value, color, icon }) => (
+          <div className={`stat-card stat-${color}`} key={label}>
+            <div className="stat-icon">{icon}</div>
+            <div className="stat-info">
+              <span className="stat-label">{label}</span>
+              <span className="stat-value">{value}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {loading ? <div className="screen-center"><Spinner /></div> : (
+        <div className="card">
+          <div className="card-header">
+            <h3>Table Freshness</h3>
+            <span className="text-muted text-sm">{records.length} table{records.length !== 1 ? 's' : ''} tracked</span>
+          </div>
+          {records.length === 0 ? (
+            <p className="empty-state">
+              No freshness data yet. Click <strong>Poll Now</strong> to run the first check,
+              or add tables under <code>freshness.tables</code> in <code>config/kit.yml</code>.
+            </p>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Table</th>
+                    <th>Lag</th>
+                    <th>Status</th>
+                    <th>Last Checked</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((r, i) => (
+                    <tr key={i}>
+                      <td className="font-mono">{r.table}</td>
+                      <td className={`font-mono lag-cell ${r.status === 'fail' ? 'text-red' : r.status === 'warn' ? 'text-warn' : ''}`}>
+                        {r.status !== 'ok' && r.status === 'fail' ? <ArrowUp size={12} style={{ marginRight: 3, verticalAlign: 'middle' }} /> : null}
+                        {formatLag(r.lag_seconds)}
+                      </td>
+                      <td><StatusBadge status={r.status} /></td>
+                      <td className="text-muted text-sm">
+                        {r.checked_at ? new Date(r.checked_at).toLocaleString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -369,19 +495,135 @@ function ProfilingScreen() {
   );
 }
 
+/** Schema Drift screen — column-level change history */
+function SchemaScreen() {
+  const [table, setTable]           = useState('');
+  const [diffs, setDiffs]           = useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [snapshotting, setSnapshotting] = useState(false);
+  const [ran, setRan]               = useState(false);
+  const [error, setError]           = useState(null);
+
+  const loadDiffs = async () => {
+    if (!table.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch(`/schema/diff/${encodeURIComponent(table.trim())}?limit=50`);
+      setDiffs(Array.isArray(data) ? data : []);
+      setRan(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const takeSnapshot = async () => {
+    setSnapshotting(true);
+    setError(null);
+    try {
+      await apiFetch('/schema/snapshot', { method: 'POST' });
+      if (table.trim()) await loadDiffs();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSnapshotting(false);
+    }
+  };
+
+  const changeTypeMeta = {
+    added:        { cls: 'badge-ok',   label: 'ADDED' },
+    removed:      { cls: 'badge-fail', label: 'REMOVED' },
+    type_changed: { cls: 'badge-warn', label: 'TYPE CHANGED' },
+  };
+
+  return (
+    <div className="screen">
+      <div className="screen-header">
+        <h2>Schema Drift</h2>
+        <button className="btn-primary" onClick={takeSnapshot} disabled={snapshotting}>
+          {snapshotting ? <><Spinner /> Snapshotting…</> : <><Layers size={14} /> Snapshot All</>}
+        </button>
+      </div>
+
+      {error && <div className="screen-error">{error}</div>}
+
+      <div className="card">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+          <input
+            placeholder="Table name (e.g. public.orders)"
+            value={table}
+            onChange={e => setTable(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && loadDiffs()}
+            style={{ flex: 1 }}
+          />
+          <button className="btn-primary" onClick={loadDiffs} disabled={loading || !table.trim()}>
+            {loading ? <Spinner /> : <><Search size={14} /> Load Diffs</>}
+          </button>
+        </div>
+
+        {!ran && (
+          <p className="empty-state">
+            Enter a table name to view its schema change history, or click <strong>Snapshot All</strong> to capture the current state of all configured tables.
+          </p>
+        )}
+        {ran && diffs.length === 0 && (
+          <p className="empty-state">No schema changes detected for <code>{table}</code>. Run a snapshot to establish a baseline.</p>
+        )}
+        {diffs.length > 0 && (
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>Change</th>
+                  <th>Before</th>
+                  <th>After</th>
+                  <th>Detected At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {diffs.map((d, i) => {
+                  const meta = changeTypeMeta[d.change_type] || { cls: 'badge-warn', label: d.change_type?.toUpperCase() };
+                  return (
+                    <tr key={i}>
+                      <td className="font-mono">{d.column_name}</td>
+                      <td><span className={`status-badge ${meta.cls}`}>{meta.label}</span></td>
+                      <td className="text-muted font-mono text-sm">{d.old_value || '—'}</td>
+                      <td className="text-muted font-mono text-sm">{d.new_value || '—'}</td>
+                      <td className="text-muted text-sm">
+                        {d.detected_at ? new Date(d.detected_at).toLocaleString() : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Dashboard shell
 // ---------------------------------------------------------------------------
 const TABS = [
-  { id: 'overview',  label: 'Overview',          icon: <Activity size={16} /> },
-  { id: 'checks',    label: 'Quality Checks',     icon: <ShieldCheck size={16} /> },
-  { id: 'alerts',    label: 'Alerts',             icon: <AlertTriangle size={16} /> },
-  { id: 'profiling', label: 'Column Profiling',   icon: <TrendingUp size={16} /> },
+  { id: 'overview',   label: 'Overview',         icon: <Activity size={16} />,      key: '1' },
+  { id: 'freshness',  label: 'Freshness',         icon: <Clock size={16} />,         key: '2' },
+  { id: 'checks',     label: 'Quality Checks',    icon: <ShieldCheck size={16} />,   key: '3' },
+  { id: 'schema',     label: 'Schema Drift',      icon: <GitBranch size={16} />,     key: '4' },
+  { id: 'alerts',     label: 'Alerts',            icon: <AlertTriangle size={16} />, key: '5' },
+  { id: 'profiling',  label: 'Column Profiling',  icon: <TrendingUp size={16} />,    key: '6' },
 ];
 
 const SCREENS = {
   overview:  <OverviewScreen />,
+  freshness: <FreshnessScreen />,
   checks:    <ChecksScreen />,
+  schema:    <SchemaScreen />,
   alerts:    <AlertsScreen />,
   profiling: <ProfilingScreen />,
 };
@@ -392,6 +634,17 @@ const Dashboard = () => {
 
   useEffect(() => {
     apiFetch('/').then(() => setBackendOk(true)).catch(() => setBackendOk(false));
+  }, []);
+
+  // Keyboard shortcuts: 1-6 switch tabs, ignore when typing in inputs
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const tab = TABS.find(t => t.key === e.key);
+      if (tab) setActiveTab(tab.id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   return (
@@ -411,8 +664,11 @@ const Dashboard = () => {
               key={tab.id}
               className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
+              title={`${tab.label} (${tab.key})`}
             >
-              {tab.icon} {tab.label}
+              {tab.icon}
+              <span style={{ flex: 1 }}>{tab.label}</span>
+              <span className="nav-key-hint">{tab.key}</span>
             </button>
           ))}
         </nav>

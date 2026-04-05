@@ -17,10 +17,121 @@ import {
   Github,
   LayoutDashboard,
   ArrowRight,
+  Check,
+  X,
+  Minus,
 } from 'lucide-react';
 import './index.css';
 import Dashboard from './dashboard/Dashboard';
 import './dashboard/Dashboard.css';
+
+// ---------------------------------------------------------------------------
+// Stats Row
+// ---------------------------------------------------------------------------
+function StatsRow() {
+  const stats = [
+    { value: '5',    label: 'Observability Pillars' },
+    { value: '3+',   label: 'Data Warehouses' },
+    { value: '100%', label: 'Self-Hosted' },
+    { value: 'MIT',  label: 'Open Source License' },
+  ];
+  return (
+    <div className="stats-row">
+      {stats.map((s, i) => (
+        <div className="stat-item" key={i}>
+          <span className="stat-value">{s.value}</span>
+          <span className="stat-desc">{s.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Integrations Strip
+// ---------------------------------------------------------------------------
+function IntegrationsStrip() {
+  const warehouses = ['Snowflake', 'BigQuery', 'PostgreSQL', 'Redshift'];
+  const tools      = ['Apache Airflow', 'dbt', 'Grafana', 'Prometheus', 'OpenTelemetry'];
+  return (
+    <div className="integrations-section">
+      <p className="integrations-label">Works with</p>
+      <div className="integrations-group">
+        <span className="integrations-sublabel">Warehouses</span>
+        <div className="integrations-chips">
+          {warehouses.map(w => <span className="integration-chip" key={w}>{w}</span>)}
+        </div>
+      </div>
+      <div className="integrations-group">
+        <span className="integrations-sublabel">Tools</span>
+        <div className="integrations-chips">
+          {tools.map(t => <span className="integration-chip" key={t}>{t}</span>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Comparison Table
+// ---------------------------------------------------------------------------
+function ComparisonSection() {
+  const rows = [
+    { feature: 'Freshness Monitoring',     ok: true,  mc: true,  bi: true,  dd: true  },
+    { feature: 'Volume Anomaly Detection', ok: true,  mc: true,  bi: true,  dd: 'partial' },
+    { feature: 'Quality Checks',           ok: true,  mc: true,  bi: true,  dd: 'partial' },
+    { feature: 'Schema Drift',             ok: true,  mc: true,  bi: true,  dd: false },
+    { feature: 'Distribution Drift',       ok: true,  mc: true,  bi: false, dd: false },
+    { feature: 'Column Profiling',         ok: true,  mc: true,  bi: true,  dd: 'partial' },
+    { feature: 'Self-Hosted / On-Prem',    ok: true,  mc: false, bi: false, dd: false },
+    { feature: 'Open Source',              ok: true,  mc: false, bi: false, dd: false },
+    { feature: 'Pricing',                  ok: 'Free', mc: '$$$$', bi: '$$$$', dd: '$$$$' },
+  ];
+
+  const Cell = ({ val }) => {
+    if (val === true)  return <span className="cmp-yes"><Check size={14} /></span>;
+    if (val === false) return <span className="cmp-no"><X size={14} /></span>;
+    if (val === 'partial') return <span className="cmp-partial"><Minus size={14} /></span>;
+    return <span className="cmp-text">{val}</span>;
+  };
+
+  return (
+    <section className="info-section animate-in delay-3">
+      <p className="section-label">Why ObservaKit</p>
+      <h2>Open source vs. <span className="highlight">closed platforms</span></h2>
+      <p className="section-subtitle">
+        Get the same core observability as enterprise SaaS tools — without the per-table pricing.
+      </p>
+      <div className="comparison-wrapper">
+        <table className="comparison-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th className="cmp-highlight-col">ObservaKit</th>
+              <th>Monte Carlo</th>
+              <th>Bigeye</th>
+              <th>DataDog</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td>{r.feature}</td>
+                <td className="cmp-highlight-col"><Cell val={r.ok} /></td>
+                <td><Cell val={r.mc} /></td>
+                <td><Cell val={r.bi} /></td>
+                <td><Cell val={r.dd} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="comparison-note">
+        Partial support ( – ) indicates the feature exists but requires a premium tier or add-on.
+      </p>
+    </section>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Nav
@@ -136,6 +247,8 @@ function LandingPage() {
           </div>
         </section>
 
+        <StatsRow />
+
         {/* Features */}
         <section className="section animate-in delay-3">
           <p className="section-label">What's included</p>
@@ -153,6 +266,8 @@ function LandingPage() {
             ))}
           </div>
         </section>
+
+        <IntegrationsStrip />
 
         {/* How to use */}
         <section className="info-section animate-in delay-3">
@@ -205,6 +320,8 @@ function LandingPage() {
             ))}
           </div>
         </section>
+
+        <ComparisonSection />
 
         {/* Case Study */}
         <section className="info-section animate-in delay-3">

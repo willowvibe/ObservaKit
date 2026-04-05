@@ -276,3 +276,36 @@ input:focus {
 
 @keyframes spin  { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── Keyboard hint in sidebar ────────────────── */
+.nav-key-hint {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #30363d;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 0 5px;
+  line-height: 1.6;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.nav-item:hover  .nav-key-hint { opacity: 1; }
+.nav-item.active .nav-key-hint { opacity: 1; color: #484f58; border-color: #484f58; }
+
+/* ── Lag / status helpers ────────────────────── */
+.text-warn  { color: #e3b341; }
+.lag-cell   { letter-spacing: 0.02em; }
+
+/* ── Code inside empty states ────────────────── */
+.empty-state code {
+  background: #21262d;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-size: 0.82em;
+  color: #8b949e;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.empty-state strong { color: #e6edf3; font-weight: 600; }
