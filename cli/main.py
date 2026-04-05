@@ -4,8 +4,14 @@ ObservaKit CLI — observakit
 Usage:
     observakit check checks/my_project/orders.yml
     observakit status
+    observakit status --output json
     observakit profile public.orders
     observakit suppress public.orders --minutes 60 --reason "Planned ETL reload"
+    observakit validate-config
+    observakit validate-config --config config/kit.staging.yml
+    observakit diff --table public.orders
+    observakit test-alert
+    observakit init
 
 Install: pip install -e .
 Then use: observakit --help
@@ -14,6 +20,7 @@ Then use: observakit --help
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 
@@ -42,7 +49,7 @@ def _get(path: str) -> dict:
         import httpx
     except ImportError:
         print("httpx is required for the CLI. Install with: pip install httpx")
-        sys.exit(1)
+        sys.exit(2)
     url = f"{_api_url()}{path}"
     resp = httpx.get(url, headers=_headers(), timeout=30)
     resp.raise_for_status()
@@ -54,7 +61,7 @@ def _post(path: str, body: dict | None = None) -> dict:
         import httpx
     except ImportError:
         print("httpx is required for the CLI. Install with: pip install httpx")
-        sys.exit(1)
+        sys.exit(2)
     url = f"{_api_url()}{path}"
     resp = httpx.post(url, headers=_headers(), json=body or {}, timeout=120)
     resp.raise_for_status()
@@ -71,11 +78,25 @@ def _status_icon(s: str) -> str:
 
 def cmd_status(args) -> int:
     """Print a health summary of all monitored tables."""
+    output_json = getattr(args, "output", None) == "json"
     try:
         data = _get("/status")
     except Exception as e:
-        print(f"❌ Could not reach ObservaKit at {_api_url()}: {e}")
+        if output_json:
+            print(json.dumps({"error": str(e)}))
+        else:
+            print(f"❌ Could not reach ObservaKit at {_api_url()}: {e}")
         return 1
+
+    if output_json:
+        print(json.dumps(data, indent=2))
+        tables = data.get("tables", [])
+        any_fail = any(
+            t.get(p) == "fail"
+            for t in tables
+            for p in ("freshness", "volume", "quality", "schema")
+        )
+        return 1 if any_fail else 0
 
     summary = data.get("summary", {})
     tables = data.get("tables", [])
@@ -87,7 +108,6 @@ def cmd_status(args) -> int:
         print("   No monitored tables found in the last 24 hours.")
         return 0
 
-    # Header
     col_w = max((len(t["name"]) for t in tables), default=20)
     fmt = f"  {{:<{col_w}}}  {{:<8}} {{:<8}} {{:<8}} {{:<8}}"
     print(fmt.format("TABLE", "FRESH", "VOLUME", "QUALITY", "SCHEMA"))
@@ -106,14 +126,24 @@ def cmd_status(args) -> int:
 
 def cmd_check(args) -> int:
     """Run quality checks (and optionally a specific file via dry_run preview)."""
+    output_json = getattr(args, "output", None) == "json"
     dry = getattr(args, "dry_run", False)
     path = f"/checks/run?dry_run={str(dry).lower()}"
-    print(f"{'🔍 Dry run:' if dry else '🚀 Running'} quality checks via {_api_url()}{path}")
+    if not output_json:
+        print(f"{'🔍 Dry run:' if dry else '🚀 Running'} quality checks via {_api_url()}{path}")
     try:
         data = _post(path)
     except Exception as e:
-        print(f"❌ Check run failed: {e}")
+        if output_json:
+            print(json.dumps({"error": str(e)}))
+        else:
+            print(f"❌ Check run failed: {e}")
         return 1
+
+    if output_json:
+        print(json.dumps(data, indent=2))
+        failed = [r for r in data.get("results", []) if not r.get("passed", True)]
+        return 1 if failed else 0
 
     results = data.get("results", [])
     checks_run = data.get("checks_run", 0)
@@ -193,11 +223,120 @@ def cmd_test_alert(args) -> int:
         return 1
 
 
+def cmd_validate_config(args) -> int:
+    """Dry-run parse kit.yml and contracts without connecting to a warehouse."""
+    config_path = getattr(args, "config", None) or os.getenv("OBSERVAKIT_CONFIG", "config/kit.yml")
+    print(f"🔍 Validating config: {config_path}")
+
+    # 1. Load and parse kit.yml
+    try:
+        from config.loader import load_config
+        config = load_config(config_path)
+    except FileNotFoundError:
+        print(f"❌ Config file not found: {config_path}")
+        return 2
+    except Exception as e:
+        print(f"❌ Failed to parse config: {e}")
+        return 2
+
+    errors = []
+    warnings = []
+
+    # 2. Required top-level sections
+    for section in ("warehouse", "freshness"):
+        if section not in config:
+            warnings.append(f"Missing section '{section}' — some features will be disabled")
+
+    # 3. Validate freshness tables
+    freshness_cfg = config.get("freshness", {})
+    for i, tbl in enumerate(freshness_cfg.get("tables", [])):
+        if not tbl.get("table"):
+            errors.append(f"freshness.tables[{i}]: missing required field 'table'")
+        if not tbl.get("timestamp_column"):
+            errors.append(f"freshness.tables[{i}]: missing required field 'timestamp_column'")
+
+    # 4. Validate volume tables
+    volume_cfg = config.get("volume", {})
+    for i, tbl in enumerate(volume_cfg.get("tables", [])):
+        if not tbl.get("table"):
+            errors.append(f"volume.tables[{i}]: missing required field 'table'")
+
+    # 5. Validate alert config
+    alerts_cfg = config.get("alerts", {})
+    default_channel = alerts_cfg.get("default_channel")
+    supported_channels = {"slack", "email", "discord", "webhook", "teams", "pagerduty"}
+    if default_channel and default_channel not in supported_channels:
+        errors.append(f"alerts.default_channel '{default_channel}' is not supported (supported: {', '.join(sorted(supported_channels))})")
+
+    for i, rule in enumerate(alerts_cfg.get("routing", [])):
+        if not rule.get("channel"):
+            errors.append(f"alerts.routing[{i}]: missing required field 'channel'")
+
+    # 6. Validate contracts directory if specified
+    contracts_dir = config.get("contracts", {}).get("directory", "config/contracts")
+    import os as _os
+    import glob as _glob
+    import yaml
+    contract_files = _glob.glob(f"{contracts_dir}/*.yml") if _os.path.isdir(contracts_dir) else []
+    contract_errors = 0
+    for cf in contract_files:
+        try:
+            with open(cf) as f:
+                doc = yaml.safe_load(f)
+            if not doc or "contract" not in doc:
+                warnings.append(f"Contract file {cf}: missing top-level 'contract' key")
+        except yaml.YAMLError as e:
+            errors.append(f"Contract file {cf}: YAML parse error — {e}")
+            contract_errors += 1
+
+    # 7. Report
+    if warnings:
+        for w in warnings:
+            print(f"⚠️  {w}")
+    if errors:
+        for e in errors:
+            print(f"❌ {e}")
+        print(f"\n❌ Validation failed with {len(errors)} error(s).")
+        return 2
+
+    sections = list(config.keys())
+    print(f"✅ Config valid — sections: {', '.join(sections)}")
+    if contract_files:
+        print(f"   Contracts validated: {len(contract_files) - contract_errors}/{len(contract_files)}")
+    return 0
+
+
+def cmd_diff(args) -> int:
+    """Compare the current schema snapshot vs last saved snapshot (offline)."""
+    table = getattr(args, "table", None)
+    print(f"🔍 Fetching schema diff{' for ' + table if table else ''} ...")
+    try:
+        path = f"/schema/diff?table_name={table}" if table else "/schema/diff"
+        data = _get(path)
+    except Exception as e:
+        print(f"❌ Failed to fetch schema diff: {e}")
+        return 1
+
+    diffs = data.get("diffs", [])
+    if not diffs:
+        print("✅ No schema changes detected.")
+        return 0
+
+    print(f"\n   {'TABLE':<35} {'CHANGE':<18} {'COLUMN':<25} {'OLD':<20} NEW")
+    print("   " + "-" * 110)
+    for d in diffs:
+        old_v = d.get("old_value", "") or ""
+        new_v = d.get("new_value", "") or ""
+        print(f"   {d.get('table_name', ''):<35} {d.get('change_type', ''):<18} {d.get('column_name', ''):<25} {old_v:<20} {new_v}")
+    print(f"\n   {len(diffs)} change(s) detected.")
+    return 1  # exit 1 when drift found — useful for CI gates
+
+
 def cmd_init(args) -> int:
     """Interactive wizard to initialize ObservaKit local configuration."""
     print("🚀 Welcome to ObservaKit!")
     print("This will create a basic 'kit.yml' configuration file in the current directory.\n")
-    
+
     if os.path.exists("kit.yml"):
         print("⚠️  A kit.yml already exists in this directory. Do you want to overwrite it? (y/N)")
         resp = input("> ").strip().lower()
@@ -246,11 +385,13 @@ volume:
         with open("kit.yml", "w") as f:
             f.write(yaml_content)
         print("\n✅ Created kit.yml successfully!")
+        print("Run `observakit validate-config --config kit.yml` to verify your config.")
         print("Run `observakit test-alert` to verify your Slack webhook works.")
         return 0
     except Exception as e:
         print(f"❌ Failed to write config: {e}")
         return 1
+
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -269,15 +410,21 @@ def main():
         "--api-key", default=None,
         help="API key (default: $OBSERVAKIT_API_KEY)"
     )
+    parser.add_argument(
+        "--config", default=None,
+        help="Path to kit.yml (default: $OBSERVAKIT_CONFIG or config/kit.yml)"
+    )
 
     sub = parser.add_subparsers(dest="command", required=True)
 
     # status
-    sub.add_parser("status", help="Print health status of all monitored tables")
+    p_status = sub.add_parser("status", help="Print health status of all monitored tables")
+    p_status.add_argument("--output", choices=["json"], default=None, help="Output format (json for scripting/CI)")
 
     # check
     p_check = sub.add_parser("check", help="Run quality checks")
     p_check.add_argument("--dry-run", action="store_true", help="Preview without writing results")
+    p_check.add_argument("--output", choices=["json"], default=None, help="Output format (json for scripting/CI)")
 
     # profile
     p_profile = sub.add_parser("profile", help="Run column profiling for a table")
@@ -295,6 +442,15 @@ def main():
     # test-alert
     sub.add_parser("test-alert", help="Fire a test alert to configured channels")
 
+    # validate-config
+    p_validate = sub.add_parser("validate-config", help="Dry-run parse kit.yml without connecting to warehouse")
+    p_validate.add_argument("--config", dest="config", default=None,
+                            help="Path to kit.yml to validate (overrides --config at top level)")
+
+    # diff
+    p_diff = sub.add_parser("diff", help="Show schema changes vs last saved snapshot")
+    p_diff.add_argument("--table", default=None, help="Limit diff to a specific table")
+
     args = parser.parse_args()
 
     # Override env vars from flags
@@ -302,6 +458,8 @@ def main():
         os.environ["OBSERVAKIT_API_URL"] = args.url
     if args.api_key:
         os.environ["OBSERVAKIT_API_KEY"] = args.api_key
+    if hasattr(args, "config") and args.config and args.command != "validate-config":
+        os.environ["OBSERVAKIT_CONFIG"] = args.config
 
     dispatch = {
         "status": cmd_status,
@@ -310,6 +468,8 @@ def main():
         "suppress": cmd_suppress,
         "init": cmd_init,
         "test-alert": cmd_test_alert,
+        "validate-config": cmd_validate_config,
+        "diff": cmd_diff,
     }
 
     handler = dispatch.get(args.command)
@@ -317,6 +477,7 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    # Exit codes: 0 = pass, 1 = check failures / runtime error, 2 = config error
     sys.exit(handler(args))
 
 

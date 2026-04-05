@@ -98,7 +98,7 @@ class WebhookDispatcher(AlertDispatcher):
 
         payload = {
             "source": "observakit",
-            "version": "0.1.7",
+            "version": "0.1.10",
             "alert_type": alert_type or "unknown",
             "table_name": table_name,
             "subject": subject,

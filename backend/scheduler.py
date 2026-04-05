@@ -281,3 +281,23 @@ def shutdown_scheduler():
     if _scheduler:
         _scheduler.shutdown(wait=False)
         logger.info("Scheduler shut down")
+
+
+def get_scheduler_jobs() -> list[dict]:
+    """
+    Return a list of all scheduled jobs with their next run time and last status.
+    Used by GET /scheduler/jobs.
+    """
+    if not _scheduler:
+        return []
+
+    jobs = []
+    for job in _scheduler.get_jobs():
+        next_run = job.next_run_time
+        jobs.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": next_run.isoformat() if next_run else None,
+            "trigger": str(job.trigger),
+        })
+    return jobs

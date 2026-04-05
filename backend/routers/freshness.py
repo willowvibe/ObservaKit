@@ -94,6 +94,11 @@ def poll_freshness(db: Session = Depends(get_db), connector=None):
     results = []
 
     for table_cfg in tables:
+        # Per-check enabled flag — skip without error if explicitly disabled
+        if not table_cfg.get("enabled", True):
+            logger.debug("Skipping freshness check for %s (enabled: false)", table_cfg.get("table"))
+            continue
+
         table_name = table_cfg["table"]
         ts_col = table_cfg["timestamp_column"]
         warn_after = _parse_duration(table_cfg.get("warn_after", "1h"))

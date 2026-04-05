@@ -127,10 +127,19 @@ def get_warehouse_connector() -> WarehouseConnector:
     elif warehouse_type == "redshift":
         from connectors.redshift import RedshiftConnector
         return RedshiftConnector()
+    elif warehouse_type == "duckdb":
+        from connectors.duckdb import DuckDBConnector
+        return DuckDBConnector()
+    elif warehouse_type == "databricks":
+        from connectors.databricks import DatabricksConnector
+        return DatabricksConnector()
+    elif warehouse_type == "trino":
+        from connectors.trino import TrinoConnector
+        return TrinoConnector()
     else:
         raise ValueError(
             f"Unsupported warehouse type: '{warehouse_type}'. "
-            f"Supported: postgres, bigquery, snowflake, mysql, mariadb, redshift"
+            f"Supported: postgres, bigquery, snowflake, mysql, mariadb, redshift, duckdb, databricks, trino"
         )
 
 

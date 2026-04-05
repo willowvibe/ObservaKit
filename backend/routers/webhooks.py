@@ -23,13 +23,15 @@ router = APIRouter()
 @router.post("/test-alert")
 def trigger_test_alert():
     """Trigger a generic test alert to verify webhook configuration."""
-    config = load_config()
-    dispatcher = SlackDispatcher(config)
-    success = dispatcher.send("🔔 *ObservaKit Test Alert*\nIf you are seeing this, your Slack integration is working perfectly!")
+    dispatcher = SlackDispatcher()
+    success = dispatcher.send(
+        message="🔔 *ObservaKit Test Alert*\nIf you are seeing this, your Slack integration is working perfectly!",
+        subject="ObservaKit Test Alert",
+    )
     if success:
         return {"status": "success", "message": "Test alert dispatched."}
     else:
-        return {"status": "error", "message": "Failed to dispatch test alert."}
+        return {"status": "error", "message": "Failed to dispatch test alert. Check SLACK_WEBHOOK_URL."}
 
 
 @router.get("/airflow")

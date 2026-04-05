@@ -29,7 +29,7 @@ from backend.routers import (
     suppressions,
     webhooks,
 )
-from backend.scheduler import shutdown_scheduler, start_scheduler
+from backend.scheduler import get_scheduler_jobs, shutdown_scheduler, start_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -366,6 +366,16 @@ async def get_status():
     finally:
         db.close()
 
+
+
+@app.get("/scheduler/jobs", tags=["Scheduler"], dependencies=[Depends(verify_api_key)])
+async def scheduler_jobs():
+    """
+    List all scheduled jobs with their next run time and trigger configuration.
+    Useful for operational dashboards and debugging scheduler state.
+    """
+    jobs = get_scheduler_jobs()
+    return {"jobs": jobs, "count": len(jobs)}
 
 
 if __name__ == "__main__":
