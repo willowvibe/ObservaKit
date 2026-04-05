@@ -15,7 +15,6 @@ import {
   GitBranch,
   Layers,
   ArrowUp,
-  ArrowDown,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -374,12 +373,13 @@ function AlertsScreen() {
     try {
       const [al, sl] = await Promise.all([
         apiFetch('/webhooks/airflow').catch(() => ({ logs: [] })),
-        apiFetch('/suppress/'),
+        apiFetch('/suppress/').catch(() => []),
       ]);
       setAlerts(al.logs || []);
       setSuppressions(sl || []);
-    } catch (_) {}
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -408,6 +408,33 @@ function AlertsScreen() {
       </div>
 
       {loading ? <div className="screen-center"><Spinner /></div> : (<>
+        {/* Alert log */}
+        <div className="card">
+          <div className="card-header">
+            <h3>Alert Log</h3>
+            <span className="text-muted text-sm">{alerts.length} event{alerts.length !== 1 ? 's' : ''}</span>
+          </div>
+          {alerts.length === 0 ? (
+            <p className="empty-state">No webhook events received yet. Configure the Airflow webhook to stream pipeline alerts here.</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead><tr><th>DAG</th><th>State</th><th>Run ID</th><th>Received At</th></tr></thead>
+                <tbody>
+                  {alerts.map((a, i) => (
+                    <tr key={i}>
+                      <td className="font-mono">{a.dag_id || a.dag || '—'}</td>
+                      <td><StatusBadge status={a.state === 'success' ? 'ok' : a.state === 'running' ? 'warn' : 'fail'} /></td>
+                      <td className="font-mono text-sm text-muted">{a.run_id || '—'}</td>
+                      <td className="text-muted text-sm">{a.received_at ? new Date(a.received_at).toLocaleString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Suppression controls */}
         <div className="card">
           <div className="card-header"><h3><BellOff size={16} style={{marginRight:6}} />Suppress Alerts</h3></div>
@@ -620,12 +647,12 @@ const TABS = [
 ];
 
 const SCREENS = {
-  overview:  <OverviewScreen />,
-  freshness: <FreshnessScreen />,
-  checks:    <ChecksScreen />,
-  schema:    <SchemaScreen />,
-  alerts:    <AlertsScreen />,
-  profiling: <ProfilingScreen />,
+  overview:  OverviewScreen,
+  freshness: FreshnessScreen,
+  checks:    ChecksScreen,
+  schema:    SchemaScreen,
+  alerts:    AlertsScreen,
+  profiling: ProfilingScreen,
 };
 
 const Dashboard = () => {
@@ -680,7 +707,7 @@ const Dashboard = () => {
       </aside>
 
       <main className="dashboard-main">
-        {SCREENS[activeTab]}
+        {(() => { const Screen = SCREENS[activeTab]; return <Screen />; })()}
       </main>
     </div>
   );
