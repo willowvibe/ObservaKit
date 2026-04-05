@@ -11,18 +11,21 @@ try:
     from backend.models import CheckResult, PipelineRun
 except ImportError:
     import sys
+
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from backend.models import CheckResult, PipelineRun
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Build DATABASE_URL from the same env vars the backend uses, so this
 # script works both from the host and inside the Docker network.
 _db_user = os.getenv("METADATA_DB_USER", "observakit")
 _db_pass = os.getenv("METADATA_DB_PASSWORD", "changeme")
-_db_host = os.getenv("METADATA_DB_HOST", "postgres")   # Docker service name, not localhost
+_db_host = os.getenv("METADATA_DB_HOST", "postgres")  # Docker service name, not localhost
 _db_port = os.getenv("METADATA_DB_PORT", "5432")
 _db_name = os.getenv("METADATA_DB_NAME", "observakit")
 DATABASE_URL = os.getenv(
@@ -32,6 +35,7 @@ DATABASE_URL = os.getenv(
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def parse_run_results(run_results_path: str, manifest_path: str):
     """Parses dbt run_results.json and manifest.json into the DB."""
@@ -46,10 +50,10 @@ def parse_run_results(run_results_path: str, manifest_path: str):
 
     db = SessionLocal()
     try:
-        with open(run_results_path, 'r') as f:
+        with open(run_results_path, "r") as f:
             run_results = json.load(f)
 
-        with open(manifest_path, 'r') as f:
+        with open(manifest_path, "r") as f:
             manifest = json.load(f)
 
         invocation_id = run_results.get("metadata", {}).get("invocation_id")
@@ -70,7 +74,9 @@ def parse_run_results(run_results_path: str, manifest_path: str):
             node_info = manifest.get("nodes", {}).get(unique_id, {})
             if not node_info:
                 # Might be a test or macro, check broader dicts if needed
-                node_info = manifest.get("sources", {}).get(unique_id, manifest.get("metrics", {}).get(unique_id, {}))
+                node_info = manifest.get("sources", {}).get(
+                    unique_id, manifest.get("metrics", {}).get(unique_id, {})
+                )
 
             resource_type = node_info.get("resource_type", "unknown")
 
@@ -82,7 +88,7 @@ def parse_run_results(run_results_path: str, manifest_path: str):
                     run_id=f"dbt_{invocation_id}_{unique_id}",
                     state="success" if status in ["success", "pass"] else "failed",
                     duration_seconds=execution_time,
-                    end_time=timestamp
+                    end_time=timestamp,
                 )
                 db.add(run)
 
@@ -96,8 +102,13 @@ def parse_run_results(run_results_path: str, manifest_path: str):
                     check_name=str(unique_id),
                     check_type="dbt_test",
                     passed=True if status in ["pass", "success"] else False,
-                    details=json.dumps({"error_message": str(result.get("message", "")), "execution_time": execution_time}),
-                    executed_at=timestamp
+                    details=json.dumps(
+                        {
+                            "error_message": str(result.get("message", "")),
+                            "execution_time": execution_time,
+                        }
+                    ),
+                    executed_at=timestamp,
                 )
                 db.add(check)
 
@@ -110,8 +121,10 @@ def parse_run_results(run_results_path: str, manifest_path: str):
     finally:
         db.close()
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Parse dbt artifacts into ObservaKit metadata DB.")
     parser.add_argument("--run-results", type=str, required=True, help="Path to run_results.json")
     parser.add_argument("--manifest", type=str, required=True, help="Path to manifest.json")

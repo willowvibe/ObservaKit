@@ -16,18 +16,21 @@ class TestWarehouseConnectorFactory:
     def test_postgres_connector(self):
         connector = get_warehouse_connector()
         from connectors.postgres import PostgresConnector
+
         assert isinstance(connector, PostgresConnector)
 
     @patch.dict("os.environ", {"WAREHOUSE_TYPE": "bigquery"})
     def test_bigquery_connector(self):
         connector = get_warehouse_connector()
         from connectors.bigquery import BigQueryConnector
+
         assert isinstance(connector, BigQueryConnector)
 
     @patch.dict("os.environ", {"WAREHOUSE_TYPE": "snowflake"})
     def test_snowflake_connector(self):
         connector = get_warehouse_connector()
         from connectors.snowflake import SnowflakeConnector
+
         assert isinstance(connector, SnowflakeConnector)
 
     @patch.dict("os.environ", {"WAREHOUSE_TYPE": "unsupported"})

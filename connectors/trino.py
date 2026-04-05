@@ -22,8 +22,8 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from connectors.base import WarehouseConnector, resilient_query
 from backend.security import is_safe_identifier, is_safe_table_reference
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,11 @@ class TrinoConnector(WarehouseConnector):
                 tbl = table
 
             # Validate catalog, schema, and table names individually
-            if not is_safe_identifier(catalog) or not is_safe_identifier(schema) or not is_safe_identifier(tbl):
+            if (
+                not is_safe_identifier(catalog)
+                or not is_safe_identifier(schema)
+                or not is_safe_identifier(tbl)
+            ):
                 raise ValueError(f"Invalid identifier in table reference: {table}")
 
             with conn.cursor() as cur:

@@ -16,10 +16,12 @@ _ENV_VAR_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 def _expand_env_vars(value: Any) -> Any:
     """Recursively expand ${VAR:-default} patterns in strings."""
     if isinstance(value, str):
+
         def replacer(match: re.Match) -> str:
             var_name = match.group(1)
             default_val = match.group(2) if match.group(2) is not None else ""
             return os.getenv(var_name, default_val)
+
         return _ENV_VAR_PATTERN.sub(replacer, value)
     elif isinstance(value, dict):
         return {k: _expand_env_vars(v) for k, v in value.items()}

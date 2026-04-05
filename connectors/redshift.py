@@ -16,8 +16,8 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from connectors.base import WarehouseConnector, resilient_query
 from backend.security import is_safe_identifier, is_safe_table_reference
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -132,10 +132,7 @@ class RedshiftConnector(WarehouseConnector):
                 )
                 rows = cur.fetchall()
                 columns = cur.description
-                return [
-                    dict(zip([col[0] for col in columns], row))
-                    for row in rows
-                ]
+                return [dict(zip([col[0] for col in columns], row)) for row in rows]
         except Exception:
             # Fallback to information_schema for clusters without SVV_COLUMNS access
             try:

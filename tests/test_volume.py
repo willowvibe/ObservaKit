@@ -67,11 +67,7 @@ class TestVolumeModel:
             db_session.add(record)
         db_session.commit()
 
-        records = (
-            db_session.query(VolumeRecord)
-            .order_by(VolumeRecord.recorded_at.desc())
-            .all()
-        )
+        records = db_session.query(VolumeRecord).order_by(VolumeRecord.recorded_at.desc()).all()
         assert len(records) == 5
         # Most recent should have the lowest row count offset
         assert records[0].row_count == 1000

@@ -25,10 +25,10 @@ from alerts.base import AlertDispatcher
 logger = logging.getLogger(__name__)
 
 # Discord message colour codes
-COLOUR_OK = 0x57F287       # green
-COLOUR_WARN = 0xFEE75C     # yellow
-COLOUR_FAIL = 0xED4245     # red
-COLOUR_INFO = 0x5865F2     # blurple (default)
+COLOUR_OK = 0x57F287  # green
+COLOUR_WARN = 0xFEE75C  # yellow
+COLOUR_FAIL = 0xED4245  # red
+COLOUR_INFO = 0x5865F2  # blurple (default)
 
 # Alert type → colour mapping
 _ALERT_COLOURS = {
@@ -47,7 +47,7 @@ class DiscordDispatcher(AlertDispatcher):
 
     def __init__(self, **kwargs):
         self._webhook_url = os.getenv("DISCORD_WEBHOOK_URL", "")
-        self._mention = os.getenv("DISCORD_MENTION", "")   # e.g. "@here" or "<@&ROLE_ID>"
+        self._mention = os.getenv("DISCORD_MENTION", "")  # e.g. "@here" or "<@&ROLE_ID>"
 
     def send(self, message: str, subject: str = None, alert_type: str = None, **kwargs) -> bool:
         if not self._webhook_url:
@@ -94,4 +94,5 @@ class DiscordDispatcher(AlertDispatcher):
 
 def _utc_now_iso() -> str:
     from datetime import datetime, timezone
+
     return datetime.now(timezone.utc).isoformat()

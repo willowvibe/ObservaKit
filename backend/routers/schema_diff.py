@@ -38,6 +38,7 @@ def take_snapshot(db: Session = Depends(get_db)):
     for table_name in tables:
         try:
             from connectors.base import get_warehouse_connector
+
             connector = get_warehouse_connector()
             current_columns = connector.get_schema(table_name)
 
@@ -61,12 +62,14 @@ def take_snapshot(db: Session = Depends(get_db)):
             if prev_snapshot:
                 diffs = _compute_diff(table_name, prev_snapshot.columns_json, current_columns, db)
 
-            results.append({
-                "table": table_name,
-                "column_count": len(current_columns),
-                "changes": len(diffs),
-                "diffs": diffs,
-            })
+            results.append(
+                {
+                    "table": table_name,
+                    "column_count": len(current_columns),
+                    "changes": len(diffs),
+                    "diffs": diffs,
+                }
+            )
 
             # Alert if changes detected
             if diffs and schema_config.get("alert"):
@@ -154,11 +157,13 @@ def _compute_diff(table_name: str, old_columns: list, new_columns: list, db: Ses
                 new_value=None,
             )
             db.add(diff)
-            diffs.append({
-                "change_type": "removed",
-                "column": name,
-                "old_type": old_map[name].get("type"),
-            })
+            diffs.append(
+                {
+                    "change_type": "removed",
+                    "column": name,
+                    "old_type": old_map[name].get("type"),
+                }
+            )
 
     # Columns added
     for name in new_map:
@@ -171,11 +176,13 @@ def _compute_diff(table_name: str, old_columns: list, new_columns: list, db: Ses
                 new_value=new_map[name].get("type", ""),
             )
             db.add(diff)
-            diffs.append({
-                "change_type": "added",
-                "column": name,
-                "new_type": new_map[name].get("type"),
-            })
+            diffs.append(
+                {
+                    "change_type": "added",
+                    "column": name,
+                    "new_type": new_map[name].get("type"),
+                }
+            )
 
     # Type changes
     for name in old_map:
@@ -191,12 +198,14 @@ def _compute_diff(table_name: str, old_columns: list, new_columns: list, db: Ses
                     new_value=new_type,
                 )
                 db.add(diff)
-                diffs.append({
-                    "change_type": "type_changed",
-                    "column": name,
-                    "old_type": old_type,
-                    "new_type": new_type,
-                })
+                diffs.append(
+                    {
+                        "change_type": "type_changed",
+                        "column": name,
+                        "old_type": old_type,
+                        "new_type": new_type,
+                    }
+                )
 
     return diffs
 
@@ -225,5 +234,5 @@ def _trigger_schema_alert(table: str, diffs: list, channel: str, db: Session):
         subject=f"⚠️ Schema Drift: {table}",
         message=message,
         db=db,
-        severity="warn"
+        severity="warn",
     )

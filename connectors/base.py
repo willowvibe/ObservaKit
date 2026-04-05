@@ -13,6 +13,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
+
 def resilient_query():
     """
     Decorator for adding exponential backoff retries to warehouse queries.
@@ -24,7 +25,7 @@ def resilient_query():
         reraise=True,
         before_sleep=lambda retry_state: logger.warning(
             f"Transient warehouse error encountered. Retrying (attempt {retry_state.attempt_number})..."
-        )
+        ),
     )
 
 
@@ -114,27 +115,35 @@ def get_warehouse_connector() -> WarehouseConnector:
 
     if warehouse_type == "postgres":
         from connectors.postgres import PostgresConnector
+
         return PostgresConnector()
     elif warehouse_type == "bigquery":
         from connectors.bigquery import BigQueryConnector
+
         return BigQueryConnector()
     elif warehouse_type == "snowflake":
         from connectors.snowflake import SnowflakeConnector
+
         return SnowflakeConnector()
     elif warehouse_type in ("mysql", "mariadb"):
         from connectors.mysql import MySQLConnector
+
         return MySQLConnector()
     elif warehouse_type == "redshift":
         from connectors.redshift import RedshiftConnector
+
         return RedshiftConnector()
     elif warehouse_type == "duckdb":
         from connectors.duckdb import DuckDBConnector
+
         return DuckDBConnector()
     elif warehouse_type == "databricks":
         from connectors.databricks import DatabricksConnector
+
         return DatabricksConnector()
     elif warehouse_type == "trino":
         from connectors.trino import TrinoConnector
+
         return TrinoConnector()
     else:
         raise ValueError(
@@ -157,9 +166,11 @@ def get_orchestrator_connector() -> OrchestratorConnector:
 
     if orch_type == "airflow":
         from connectors.airflow import AirflowConnector
+
         return AirflowConnector()
     elif orch_type == "prefect":
         from connectors.prefect import PrefectConnector
+
         return PrefectConnector()
     else:
         raise ValueError(f"Unsupported orchestrator type: {orch_type}")

@@ -12,7 +12,7 @@ the scheduler startup to make tests fully self-contained.
 """
 
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,20 +24,17 @@ os.environ["OBSERVAKIT_API_KEY"] = "test-secret-key-abc123"
 os.environ["METADATA_DB_TYPE"] = "sqlite"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
+from sqlalchemy.pool import StaticPool
+
 from backend.main import app  # noqa: E402
 from backend.models import Base, get_db  # noqa: E402
-
-
-from sqlalchemy.pool import StaticPool
 
 # ---------------------------------------------------------------------------
 # Override the DB dependency to use an in-memory SQLite DB
 # ---------------------------------------------------------------------------
 
 _test_engine = create_engine(
-    "sqlite:///:memory:", 
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    "sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool
 )
 Base.metadata.create_all(bind=_test_engine)
 _TestSession = sessionmaker(bind=_test_engine)
@@ -57,10 +54,12 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(scope="module")
 def client():
     # Patch out the scheduler and warehouse connector so no real connections happen
-    with patch("backend.main.start_scheduler"), \
-         patch("backend.main.shutdown_scheduler"), \
-         patch("backend.main.command.upgrade"), \
-         patch("connectors.base.get_warehouse_connector"):
+    with (
+        patch("backend.main.start_scheduler"),
+        patch("backend.main.shutdown_scheduler"),
+        patch("backend.main.command.upgrade"),
+        patch("connectors.base.get_warehouse_connector"),
+    ):
         with TestClient(app, raise_server_exceptions=False) as c:
             yield c
 
@@ -68,6 +67,7 @@ def client():
 # ---------------------------------------------------------------------------
 # Auth tests
 # ---------------------------------------------------------------------------
+
 
 class TestAPIKeyAuth:
     def test_missing_api_key_returns_403(self, client):

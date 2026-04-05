@@ -74,9 +74,7 @@ def _safe_eval_assertion(expression: str, result_value) -> bool:
             f"Assertion must be a simple comparison (e.g. 'result == 0'), got: {expression!r}"
         )
     if len(node.ops) != 1 or len(node.comparators) != 1:
-        raise ValueError(
-            f"Only single comparisons are supported, got: {expression!r}"
-        )
+        raise ValueError(f"Only single comparisons are supported, got: {expression!r}")
 
     left = node.left
     op = node.ops[0]
@@ -84,9 +82,7 @@ def _safe_eval_assertion(expression: str, result_value) -> bool:
 
     # Left side must be the name 'result'
     if not (isinstance(left, ast.Name) and left.id == "result"):
-        raise ValueError(
-            f"Left side of assertion must be 'result', got: {ast.dump(left)!r}"
-        )
+        raise ValueError(f"Left side of assertion must be 'result', got: {ast.dump(left)!r}")
 
     # Right side must be a numeric constant (int or float)
     if isinstance(right, ast.Constant) and isinstance(right.value, (int, float)):
@@ -145,10 +141,12 @@ def get_check_trends(
     """
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    results = db.query(CheckResult).filter(
-        CheckResult.table_name == table_name,
-        CheckResult.executed_at >= cutoff
-    ).order_by(CheckResult.executed_at.asc()).all()
+    results = (
+        db.query(CheckResult)
+        .filter(CheckResult.table_name == table_name, CheckResult.executed_at >= cutoff)
+        .order_by(CheckResult.executed_at.asc())
+        .all()
+    )
 
     if not results:
         return {"table": table_name, "message": "No data for selected period"}
@@ -186,7 +184,7 @@ def get_check_trends(
         "period_days": days,
         "overall_pass_rate": round(pass_rate, 2),
         "current_failure_streak": current_streak,
-        "history": history
+        "history": history,
     }
 
 
@@ -229,7 +227,7 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
                     passed=res["passed"],
                     metric_value=res.get("metric_value"),
                     details=res.get("details"),
-                    executed_at=datetime.now(timezone.utc)
+                    executed_at=datetime.now(timezone.utc),
                 )
                 db.add(record)
 
@@ -267,18 +265,17 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
                     table_name=table,
                     check_type="custom_sql",
                     passed=passed,
-                    metric_value=float(result_value) if isinstance(result_value, (int, float)) else None,
+                    metric_value=float(result_value)
+                    if isinstance(result_value, (int, float))
+                    else None,
                     details=f"Query: {query.strip()[:100]}... | Result: {result_value}",
-                    executed_at=datetime.now(timezone.utc)
+                    executed_at=datetime.now(timezone.utc),
                 )
                 db.add(record)
 
-            all_results.append({
-                "check_name": name,
-                "table_name": table,
-                "passed": passed,
-                "engine": "custom_sql"
-            })
+            all_results.append(
+                {"check_name": name, "table_name": table, "passed": passed, "engine": "custom_sql"}
+            )
 
             if not passed and not dry_run:
                 # Trigger lineage-aware alert
@@ -291,7 +288,7 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
                     subject=f"❌ Quality Check Failed: {name}",
                     message=f"Table: {table}\nCheck: {name}\nResult: {result_value}\nAssertion: {assertion}{impact_msg}",
                     db=db,
-                    severity="fail"
+                    severity="fail",
                 )
 
         except Exception as e:
@@ -304,7 +301,12 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
 
     if not dry_run:
         db.commit()
-    return {"engine": engine_name, "checks_run": len(all_results), "results": all_results, "dry_run": dry_run}
+    return {
+        "engine": engine_name,
+        "checks_run": len(all_results),
+        "results": all_results,
+        "dry_run": dry_run,
+    }
 
 
 def _run_soda_check(check_file: str, connector) -> list[dict]:
@@ -332,13 +334,27 @@ def _run_soda_check(check_file: str, connector) -> list[dict]:
         return _parse_soda_json_output(result.stdout, result.returncode, check_file)
 
     except FileNotFoundError:
-        logger.error("'soda' CLI not found. Install soda-core-postgres with: pip install soda-core-postgres")
-        return [{"check_name": "soda_init", "table_name": "unknown", "passed": False,
-                 "details": "soda CLI not found — install soda-core-postgres"}]
+        logger.error(
+            "'soda' CLI not found. Install soda-core-postgres with: pip install soda-core-postgres"
+        )
+        return [
+            {
+                "check_name": "soda_init",
+                "table_name": "unknown",
+                "passed": False,
+                "details": "soda CLI not found — install soda-core-postgres",
+            }
+        ]
     except subprocess.TimeoutExpired:
         logger.error(f"Soda scan timed out for {check_file}")
-        return [{"check_name": "soda_timeout", "table_name": "unknown", "passed": False,
-                 "details": f"Scan timed out after 300s: {check_file}"}]
+        return [
+            {
+                "check_name": "soda_timeout",
+                "table_name": "unknown",
+                "passed": False,
+                "details": f"Scan timed out after 300s: {check_file}",
+            }
+        ]
     finally:
         os.unlink(cfg_path)
 
@@ -348,12 +364,22 @@ def _parse_soda_json_output(stdout: str, returncode: int, check_file: str) -> li
     results = []
     try:
         # Soda prints one JSON object per line in some versions, or a single array
-        lines = [line.strip() for line in stdout.splitlines() if line.strip().startswith("{") or line.strip().startswith("[")]
+        lines = [
+            line.strip()
+            for line in stdout.splitlines()
+            if line.strip().startswith("{") or line.strip().startswith("[")
+        ]
         if not lines:
             # No JSON output — treat as failed scan
             logger.warning(f"No JSON output from soda scan of {check_file} (rc={returncode})")
-            return [{"check_name": "soda_scan", "table_name": "unknown",
-                     "passed": returncode == 0, "details": "No structured output from soda"}]
+            return [
+                {
+                    "check_name": "soda_scan",
+                    "table_name": "unknown",
+                    "passed": returncode == 0,
+                    "details": "No structured output from soda",
+                }
+            ]
 
         raw = json.loads("\n".join(lines)) if len(lines) == 1 else json.loads(lines[0])
 
@@ -361,17 +387,27 @@ def _parse_soda_json_output(stdout: str, returncode: int, check_file: str) -> li
         checks = raw.get("checks", []) if isinstance(raw, dict) else raw
         for check in checks:
             outcome = check.get("outcome", "fail").lower()
-            results.append({
-                "check_name": check.get("name", "unnamed"),
-                "table_name": check.get("table", "unknown"),
-                "passed": outcome == "pass",
-                "metric_value": check.get("measured_value"),
-                "details": check.get("definition", ""),
-            })
+            results.append(
+                {
+                    "check_name": check.get("name", "unnamed"),
+                    "table_name": check.get("table", "unknown"),
+                    "passed": outcome == "pass",
+                    "metric_value": check.get("measured_value"),
+                    "details": check.get("definition", ""),
+                }
+            )
     except (json.JSONDecodeError, KeyError) as e:
-        logger.warning(f"Could not parse Soda JSON output: {e} — treating as {'pass' if returncode == 0 else 'fail'}")
-        results.append({"check_name": "soda_scan", "table_name": "unknown",
-                        "passed": returncode == 0, "details": stdout[:500]})
+        logger.warning(
+            f"Could not parse Soda JSON output: {e} — treating as {'pass' if returncode == 0 else 'fail'}"
+        )
+        results.append(
+            {
+                "check_name": "soda_scan",
+                "table_name": "unknown",
+                "passed": returncode == 0,
+                "details": stdout[:500],
+            }
+        )
 
     return results
 
@@ -386,15 +422,17 @@ def _run_gx_check(check_file: str, connector) -> list[dict]:
         f"Great Expectations engine selected for {check_file} but is not yet implemented. "
         "Switch to engine: soda in kit.yml or implement GX execution logic."
     )
-    return [{
-        "check_name": "gx_not_implemented",
-        "table_name": "unknown",
-        "passed": False,
-        "details": (
-            "Great Expectations execution is not implemented. "
-            "Use engine: soda in kit.yml or add a GX runner."
-        ),
-    }]
+    return [
+        {
+            "check_name": "gx_not_implemented",
+            "table_name": "unknown",
+            "passed": False,
+            "details": (
+                "Great Expectations execution is not implemented. "
+                "Use engine: soda in kit.yml or add a GX runner."
+            ),
+        }
+    ]
 
 
 @router.post("/volume")
@@ -494,7 +532,12 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
             # Alert on anomaly
             if is_anomaly:
                 _trigger_volume_alert(
-                    table_name, current_count, rolling_avg, deviation, table_cfg.get("alert", "slack"), db
+                    table_name,
+                    current_count,
+                    rolling_avg,
+                    deviation,
+                    table_cfg.get("alert", "slack"),
+                    db,
                 )
 
         except Exception as e:
@@ -505,7 +548,9 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
     return {"checked": len(results), "results": results}
 
 
-def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, channel: str, db: Session):
+def _trigger_volume_alert(
+    table: str, count: int, avg: float, deviation: float, channel: str, db: Session
+):
     """Dispatch a volume anomaly alert."""
     downstream = get_lineage_impact(table)
     impact_msg = f"\n⚠️ Downstream impact: {', '.join(downstream)}" if downstream else ""
@@ -525,7 +570,7 @@ def _trigger_volume_alert(table: str, count: int, avg: float, deviation: float, 
         subject=f"🔴 Volume Anomaly: {table}",
         message=message,
         db=db,
-        severity="warn"
+        severity="warn",
     )
 
 
@@ -587,8 +632,12 @@ def run_consistency_checks(connector, db: Session) -> list[dict]:
                 col_b = check_cfg["column_b"]
                 tolerance_pct = float(check_cfg.get("tolerance_pct", 0.0))
 
-                sum_a_rows = connector.execute_query(f"SELECT COALESCE(SUM({col_a}), 0) as total FROM {table_a}")
-                sum_b_rows = connector.execute_query(f"SELECT COALESCE(SUM({col_b}), 0) as total FROM {table_b}")
+                sum_a_rows = connector.execute_query(
+                    f"SELECT COALESCE(SUM({col_a}), 0) as total FROM {table_a}"
+                )
+                sum_b_rows = connector.execute_query(
+                    f"SELECT COALESCE(SUM({col_b}), 0) as total FROM {table_b}"
+                )
                 sum_a = float(sum_a_rows[0]["total"]) if sum_a_rows else 0.0
                 sum_b = float(sum_b_rows[0]["total"]) if sum_b_rows else 0.0
                 max_val = max(abs(sum_a), abs(sum_b), 1.0)
@@ -612,7 +661,9 @@ def run_consistency_checks(connector, db: Session) -> list[dict]:
                 executed_at=datetime.now(timezone.utc),
             )
             db.add(record)
-            results.append({"check_name": name, "check_type": check_type, "passed": passed, "details": details})
+            results.append(
+                {"check_name": name, "check_type": check_type, "passed": passed, "details": details}
+            )
 
             if not passed:
                 dispatch_alert(
@@ -621,7 +672,7 @@ def run_consistency_checks(connector, db: Session) -> list[dict]:
                     subject=f"❌ Consistency Check Failed: {name}",
                     message=f"Consistency check failed: {name}\n{details}",
                     db=db,
-                    severity="fail"
+                    severity="fail",
                 )
 
         except Exception as e:

@@ -11,8 +11,8 @@ from typing import Optional
 import psycopg2
 import psycopg2.extras
 
-from connectors.base import WarehouseConnector, resilient_query
 from backend.security import is_safe_identifier, is_safe_table_reference
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +48,7 @@ class PostgresConnector(WarehouseConnector):
         conn = self.connect()
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    f"SELECT MAX({column}) FROM {table}"
-                )
+                cur.execute(f"SELECT MAX({column}) FROM {table}")
                 result = cur.fetchone()
                 return result[0] if result and result[0] else None
         except Exception as e:
@@ -149,4 +147,3 @@ class PostgresConnector(WarehouseConnector):
                 },
             },
         }
-

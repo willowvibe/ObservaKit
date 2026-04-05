@@ -61,7 +61,9 @@ def _advisory_lock(db, job_id: str):
             {"key": lock_key},
         ).scalar()
         if not result:
-            logger.debug("Advisory lock busy for job=%s — skipping (another replica is running it)", job_id)
+            logger.debug(
+                "Advisory lock busy for job=%s — skipping (another replica is running it)", job_id
+            )
             yield False
             return
         yield True
@@ -86,6 +88,7 @@ def _run_job(pillar: str, job_fn, job_id: str | None = None):
     _job_id = job_id or pillar
 
     from backend.models import SessionLocal
+
     db = SessionLocal()
     try:
         with _advisory_lock(db, _job_id) as acquired:
@@ -94,7 +97,8 @@ def _run_job(pillar: str, job_fn, job_id: str | None = None):
 
             logger.info(
                 '{"event":"job_start","run_id":"%s","pillar":"%s"}',
-                run_id, pillar,
+                run_id,
+                pillar,
             )
             t0 = time.monotonic()
             try:
@@ -104,13 +108,18 @@ def _run_job(pillar: str, job_fn, job_id: str | None = None):
                 status = "error"
                 logger.error(
                     '{"event":"job_error","run_id":"%s","pillar":"%s","error":"%s"}',
-                    run_id, pillar, exc,
+                    run_id,
+                    pillar,
+                    exc,
                 )
             finally:
                 duration_ms = int((time.monotonic() - t0) * 1000)
                 logger.info(
                     '{"event":"job_end","run_id":"%s","pillar":"%s","duration_ms":%d,"status":"%s"}',
-                    run_id, pillar, duration_ms, status,
+                    run_id,
+                    pillar,
+                    duration_ms,
+                    status,
                 )
     finally:
         db.close()
@@ -120,8 +129,10 @@ def _run_job(pillar: str, job_fn, job_id: str | None = None):
 # Job implementations — each receives an open DB session
 # ---------------------------------------------------------------------------
 
+
 def _run_freshness_checks():
     """Trigger freshness checks for all configured tables."""
+
     def _job(db):
         from backend.routers.freshness import poll_freshness
         from connectors.base import get_warehouse_connector
@@ -137,6 +148,7 @@ def _run_freshness_checks():
 
 def _run_volume_checks():
     """Trigger volume anomaly checks."""
+
     def _job(db):
         from backend.routers.checks import run_volume_checks
         from connectors.base import get_warehouse_connector
@@ -152,8 +164,10 @@ def _run_volume_checks():
 
 def _run_schema_checks():
     """Trigger schema drift detection."""
+
     def _job(db):
         from backend.routers.schema_diff import take_snapshot
+
         take_snapshot(db=db)
 
     _run_job("schema", _job)
@@ -161,8 +175,10 @@ def _run_schema_checks():
 
 def _run_quality_checks():
     """Trigger quality checks."""
+
     def _job(db):
         from backend.routers.checks import run_quality_checks
+
         run_quality_checks(db=db)
 
     _run_job("quality", _job)
@@ -170,8 +186,10 @@ def _run_quality_checks():
 
 def _run_finops_checks():
     """Trigger FinOps cost checks."""
+
     def _job(db):
         from backend.routers.finops import poll_finops_costs
+
         # Defaulting to 7 days for the scheduled check
         poll_finops_costs(days=7, db=db)
 
@@ -180,8 +198,10 @@ def _run_finops_checks():
 
 def _run_dbt_watcher():
     """Poll dbt project's target/run_results.json and ingest if newer than last seen."""
+
     def _job(db):
         from dbt_integration.watcher import poll_dbt_artifacts
+
         result = poll_dbt_artifacts(db=db)
         if result["status"] == "error":
             raise RuntimeError(result.get("error", "unknown dbt watcher error"))
@@ -193,6 +213,7 @@ def _run_dbt_watcher():
 # ---------------------------------------------------------------------------
 # Scheduler lifecycle
 # ---------------------------------------------------------------------------
+
 
 def start_scheduler():
     """Start the APScheduler background scheduler."""
@@ -294,10 +315,12 @@ def get_scheduler_jobs() -> list[dict]:
     jobs = []
     for job in _scheduler.get_jobs():
         next_run = job.next_run_time
-        jobs.append({
-            "id": job.id,
-            "name": job.name,
-            "next_run": next_run.isoformat() if next_run else None,
-            "trigger": str(job.trigger),
-        })
+        jobs.append(
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run": next_run.isoformat() if next_run else None,
+                "trigger": str(job.trigger),
+            }
+        )
     return jobs

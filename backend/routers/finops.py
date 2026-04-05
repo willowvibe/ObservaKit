@@ -18,10 +18,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 finops_cost_gauge = Gauge(
-    "observakit_finops_costs",
-    "Compute cost (credits/bytes) over the last N days",
-    ["warehouse"]
+    "observakit_finops_costs", "Compute cost (credits/bytes) over the last N days", ["warehouse"]
 )
+
 
 @router.post("/poll", dependencies=[Depends(verify_api_key)])
 def poll_finops_costs(days: int = 7, db: Session = Depends(get_db)):
@@ -43,11 +42,7 @@ def poll_finops_costs(days: int = 7, db: Session = Depends(get_db)):
         cost = connector.get_compute_costs(days=days)
         finops_cost_gauge.labels(warehouse=warehouse_type).set(cost)
 
-        return {
-            "warehouse": warehouse_type,
-            "cost_tracked": cost,
-            "period_days": days
-        }
+        return {"warehouse": warehouse_type, "cost_tracked": cost, "period_days": days}
     except Exception as e:
         logger.error(f"Failed to poll FinOps costs: {e}")
         raise HTTPException(status_code=500, detail=str(e))

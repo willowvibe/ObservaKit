@@ -51,10 +51,10 @@ def get_db():
         db.close()
 
 
-
 # =============================================================================
 # Models
 # =============================================================================
+
 
 class Project(Base):
     """A logical grouping of checks, integrations, and alerts."""
@@ -106,7 +106,9 @@ class VolumeRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     table_name = Column(String(255), nullable=False, index=True)
     dag_id = Column(String(255), nullable=True)
-    row_count = Column(BigInteger, nullable=False)  # BigInteger supports tables with billions of rows
+    row_count = Column(
+        BigInteger, nullable=False
+    )  # BigInteger supports tables with billions of rows
     rolling_avg = Column(Float, nullable=True)
     deviation_pct = Column(Float, nullable=True)
     is_anomaly = Column(Boolean, default=False)
@@ -123,7 +125,9 @@ class CheckResult(Base):
     table_name = Column(String(255), nullable=False, index=True)
     check_type = Column(String(100), nullable=False)  # soda | great_expectations | custom_sql
     passed = Column(Boolean, nullable=False)
-    metric_value = Column(Numeric(precision=20, scale=6), nullable=True)  # Numeric avoids float precision loss
+    metric_value = Column(
+        Numeric(precision=20, scale=6), nullable=True
+    )  # Numeric avoids float precision loss
     details = Column(Text, nullable=True)
     executed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -236,8 +240,8 @@ class DistributionDrift(Base):
     column_name = Column(String(255), nullable=False)
     # null_pct_change | value_share_shift | mean_shift
     drift_type = Column(String(100), nullable=False)
-    previous_value = Column(Text, nullable=True)   # Human-readable description of old state
-    current_value = Column(Text, nullable=True)    # Human-readable description of new state
+    previous_value = Column(Text, nullable=True)  # Human-readable description of old state
+    current_value = Column(Text, nullable=True)  # Human-readable description of new state
     change_magnitude = Column(Float, nullable=True)  # Fraction (0-1); multiply by 100 for %
     detected_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 

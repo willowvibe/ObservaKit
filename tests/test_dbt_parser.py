@@ -8,23 +8,16 @@ from dbt_integration.parse_artifacts import parse_run_results
 def test_dbt_parser_success(tmp_path):
     # Create dummy dbt artifacts
     run_results_data = {
-        "metadata": {
-            "invocation_id": "test_inv_123",
-            "generated_at": "2023-10-27T10:00:00Z"
-        },
+        "metadata": {"invocation_id": "test_inv_123", "generated_at": "2023-10-27T10:00:00Z"},
         "results": [
-            {
-                "unique_id": "model.my_project.my_model",
-                "status": "success",
-                "execution_time": 1.5
-            },
+            {"unique_id": "model.my_project.my_model", "status": "success", "execution_time": 1.5},
             {
                 "unique_id": "test.my_project.not_null_my_model_id",
                 "status": "fail",
                 "execution_time": 0.5,
-                "message": "Got 5 results, expected 0."
-            }
-        ]
+                "message": "Got 5 results, expected 0.",
+            },
+        ],
     }
 
     manifest_data = {
@@ -32,13 +25,13 @@ def test_dbt_parser_success(tmp_path):
             "model.my_project.my_model": {
                 "resource_type": "model",
                 "name": "my_model",
-                "alias": "my_model_table"
+                "alias": "my_model_table",
             },
             "test.my_project.not_null_my_model_id": {
                 "resource_type": "test",
                 "column_name": "id",
-                "attached_node": "model.my_project.my_model"
-            }
+                "attached_node": "model.my_project.my_model",
+            },
         }
     }
 

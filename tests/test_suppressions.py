@@ -7,8 +7,6 @@ in-memory SQLite DB (from the db_session fixture in conftest.py).
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 from alerts.base import is_alert_deduped, is_alert_suppressed
 from backend.models import AlertLog, CheckSuppression
 

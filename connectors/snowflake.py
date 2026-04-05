@@ -8,8 +8,8 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from connectors.base import WarehouseConnector, resilient_query
 from backend.security import is_safe_identifier, is_safe_table_reference
+from connectors.base import WarehouseConnector, resilient_query
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +102,7 @@ class SnowflakeConnector(WarehouseConnector):
                 (schema_name.upper(), table_name.upper()),
             )
             columns = cur.description
-            return [
-                dict(zip([col[0].lower() for col in columns], row))
-                for row in cur.fetchall()
-            ]
+            return [dict(zip([col[0].lower() for col in columns], row)) for row in cur.fetchall()]
         except Exception as e:
             logger.error(f"Snowflake error getting schema for {table}: {e}")
             self.close()
@@ -119,10 +116,7 @@ class SnowflakeConnector(WarehouseConnector):
             cur = conn.cursor()
             cur.execute(query, params)
             columns = cur.description
-            return [
-                dict(zip([col[0].lower() for col in columns], row))
-                for row in cur.fetchall()
-            ]
+            return [dict(zip([col[0].lower() for col in columns], row)) for row in cur.fetchall()]
         except Exception as e:
             logger.error(f"Snowflake error executing query: {e}")
             self.close()
@@ -160,7 +154,7 @@ class SnowflakeConnector(WarehouseConnector):
                     "account": self._config["account"],
                     "database": self._config["database"],
                     "warehouse": self._config["warehouse"],
-                }
+                },
             }
         }
 

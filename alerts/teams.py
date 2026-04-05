@@ -72,7 +72,9 @@ class TeamsDispatcher(AlertDispatcher):
                                 {
                                     "type": "Action.OpenUrl",
                                     "title": "View in ObservaKit",
-                                    "url": os.getenv("OBSERVAKIT_DASHBOARD_URL", "http://localhost:8000/ui"),
+                                    "url": os.getenv(
+                                        "OBSERVAKIT_DASHBOARD_URL", "http://localhost:8000/ui"
+                                    ),
                                 }
                             ]
                             if os.getenv("OBSERVAKIT_DASHBOARD_URL")

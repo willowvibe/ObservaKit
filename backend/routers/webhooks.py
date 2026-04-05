@@ -30,7 +30,10 @@ def trigger_test_alert():
     if success:
         return {"status": "success", "message": "Test alert dispatched."}
     else:
-        return {"status": "error", "message": "Failed to dispatch test alert. Check SLACK_WEBHOOK_URL."}
+        return {
+            "status": "error",
+            "message": "Failed to dispatch test alert. Check SLACK_WEBHOOK_URL.",
+        }
 
 
 @router.get("/airflow")
@@ -178,4 +181,3 @@ def _parse_datetime(dt_str: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
         return None
-

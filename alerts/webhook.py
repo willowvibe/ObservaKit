@@ -75,7 +75,7 @@ class WebhookDispatcher(AlertDispatcher):
         self._severity_map = kwargs.get("webhook_severity_map", {})
         # Extra headers to pass (e.g. Authorization for internal services)
         self._extra_headers: dict = {}
-        auth_header = os.getenv("WEBHOOK_AUTH_HEADER", "")   # e.g. "Bearer my-token"
+        auth_header = os.getenv("WEBHOOK_AUTH_HEADER", "")  # e.g. "Bearer my-token"
         if auth_header:
             self._extra_headers["Authorization"] = auth_header
 
@@ -91,10 +91,7 @@ class WebhookDispatcher(AlertDispatcher):
             logger.warning("Webhook URL not configured — skipping webhook alert")
             return False
 
-        severity = (
-            self._severity_map.get(alert_type)
-            or _SEVERITY_MAP.get(alert_type, "info")
-        )
+        severity = self._severity_map.get(alert_type) or _SEVERITY_MAP.get(alert_type, "info")
 
         payload = {
             "source": "observakit",
