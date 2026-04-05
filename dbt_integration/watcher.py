@@ -18,7 +18,6 @@ No new dependencies required — uses APScheduler polling already in the schedul
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -76,7 +75,7 @@ def poll_dbt_artifacts(db=None) -> dict:
     # New run detected — parse it
     logger.info(f"New dbt run detected ({run_results_path}) — ingesting artifacts")
     try:
-        from dbt_integration.parse_artifacts import parse_run_results, parse_manifest
+        from dbt_integration.parse_artifacts import parse_manifest, parse_run_results
 
         # Ingest run results
         manifest_path = run_results_path.parent / "manifest.json"
@@ -106,6 +105,7 @@ def _ingest_dbt_freshness(run_results_path: str, db) -> None:
     A failed model is recorded as status='fail'.
     """
     import json
+
     from backend.models import FreshnessRecord
 
     try:

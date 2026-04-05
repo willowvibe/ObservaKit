@@ -11,14 +11,24 @@ from pathlib import Path
 
 from alembic.config import Config
 from fastapi import Depends, FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from prometheus_client import make_asgi_app
 
 from alembic import command
 from backend.auth import verify_api_key
-from backend.routers import checks, contracts, distribution, finops, freshness, profiling, schema_diff, suppressions, webhooks
+from backend.routers import (
+    checks,
+    contracts,
+    distribution,
+    finops,
+    freshness,
+    profiling,
+    schema_diff,
+    suppressions,
+    webhooks,
+)
 from backend.scheduler import shutdown_scheduler, start_scheduler
 
 logger = logging.getLogger(__name__)
@@ -171,8 +181,9 @@ async def healthz():
         periodSeconds: 10
     """
     from fastapi.responses import JSONResponse
-    from backend.models import SessionLocal
     from sqlalchemy import text
+
+    from backend.models import SessionLocal
 
     db = SessionLocal()
     try:
@@ -201,10 +212,16 @@ async def get_status():
     Suitable for dashboard badges, Slack daily digests, and embedded widgets.
     """
     from datetime import timedelta
+
     from sqlalchemy import func as sqlfunc
+
     from backend.models import (
-        FreshnessRecord, VolumeRecord, CheckResult,
-        SchemaDiff, CheckSuppression, SessionLocal
+        CheckResult,
+        CheckSuppression,
+        FreshnessRecord,
+        SchemaDiff,
+        SessionLocal,
+        VolumeRecord,
     )
 
     db = SessionLocal()
@@ -353,6 +370,7 @@ async def get_status():
 
 if __name__ == "__main__":
     import argparse
+
     import uvicorn
 
     parser = argparse.ArgumentParser(description="Run ObservaKit Backend")

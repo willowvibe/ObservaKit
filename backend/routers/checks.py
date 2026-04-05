@@ -21,7 +21,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from alerts.base import dispatch_alert, get_lineage_impact, is_alert_deduped, is_alert_suppressed
-from backend.models import AlertLog, CheckResult, CheckSuppression, VolumeRecord, get_db
+from backend.models import AlertLog, CheckResult, VolumeRecord, get_db
 from config.loader import load_config
 from connectors.base import get_warehouse_connector
 
@@ -232,7 +232,7 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
                     executed_at=datetime.now(timezone.utc)
                 )
                 db.add(record)
-            
+
             all_results.append(res)
 
     # --- Run Custom SQL Checks ---
@@ -243,7 +243,7 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
             query = check_cfg.get("query")
             assertion = check_cfg.get("assert", "result == 0")
             table = check_cfg.get("table", "unknown")
-            
+
             # Execute the query
             query_results = connector.execute_query(query)
             # Typically these queries return a single value, e.g., a count
@@ -349,7 +349,7 @@ def _parse_soda_json_output(stdout: str, returncode: int, check_file: str) -> li
     results = []
     try:
         # Soda prints one JSON object per line in some versions, or a single array
-        lines = [l.strip() for l in stdout.splitlines() if l.strip().startswith("{") or l.strip().startswith("[")]
+        lines = [line.strip() for line in stdout.splitlines() if line.strip().startswith("{") or line.strip().startswith("[")]
         if not lines:
             # No JSON output — treat as failed scan
             logger.warning(f"No JSON output from soda scan of {check_file} (rc={returncode})")

@@ -87,6 +87,8 @@ class MySQLConnector(WarehouseConnector):
         table_name = parts[-1]
 
         try:
+            import pymysql.cursors
+
             with conn.cursor(pymysql.cursors.DictCursor) as cur:
                 cur.execute(
                     """

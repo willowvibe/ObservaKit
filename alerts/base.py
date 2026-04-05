@@ -46,6 +46,7 @@ def dispatch_alert(alert_type: str, message: str, table_name: str = None, subjec
     Uses load_config() so that ${VAR:-default} env vars are properly expanded.
     """
     import re
+
     from config.loader import load_config
 
     try:
@@ -86,6 +87,7 @@ def is_alert_suppressed(db, table_name: str) -> bool:
     Shared utility used by all router alert triggers.
     """
     from datetime import datetime, timezone
+
     from backend.models import CheckSuppression
 
     suppression = db.query(CheckSuppression).filter(
@@ -108,6 +110,7 @@ def is_alert_deduped(db, table_name: str, alert_type: str, window_minutes: int =
     the last window_minutes. Used to prevent notification floods.
     """
     from datetime import datetime, timedelta, timezone
+
     from backend.models import AlertLog
 
     recent = db.query(AlertLog).filter(

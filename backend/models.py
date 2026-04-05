@@ -24,7 +24,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 DB_TYPE = os.getenv("METADATA_DB_TYPE", "postgresql").lower()
 
 if DB_TYPE == "sqlite":
-    DATABASE_URL = f"sqlite:///./observakit.db"
+    DATABASE_URL = "sqlite:///./observakit.db"
     # SQLite needs special handling for threading
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:

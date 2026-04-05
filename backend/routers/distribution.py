@@ -29,7 +29,7 @@ from prometheus_client import Gauge
 from sqlalchemy.orm import Session
 
 from alerts.base import dispatch_alert
-from backend.models import DistributionSnapshot, DistributionDrift, get_db
+from backend.models import DistributionDrift, DistributionSnapshot, get_db
 from config.loader import load_config
 
 logger = logging.getLogger(__name__)

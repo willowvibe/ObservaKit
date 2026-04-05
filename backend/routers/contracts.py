@@ -59,15 +59,13 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from backend.routers.checks import _safe_eval_assertion
-
 import yaml
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from alerts.base import dispatch_alert
 from backend.models import ContractValidationResult, get_db
-from config.loader import load_config
+from backend.routers.checks import _safe_eval_assertion
 
 logger = logging.getLogger(__name__)
 

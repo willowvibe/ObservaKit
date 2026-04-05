@@ -24,7 +24,7 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
     """
     connector = get_warehouse_connector()
     schema = connector.get_schema(table_name)
-    
+
     if not schema:
         raise HTTPException(status_code=404, detail=f"Table {table_name} not found or schema empty")
 
@@ -32,7 +32,6 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
     if row_count == 0:
         return {"message": f"Table {table_name} is empty, skipping profiling"}
 
-    warehouse_type = connector.__class__.__name__.lower()
     profiles = []
     for col in schema:
         col_name = col["name"]
@@ -91,13 +90,13 @@ def get_latest_profile(table_name: str, db: Session = Depends(get_db)):
     latest_run = db.query(ColumnProfile.profiled_at).filter(
         ColumnProfile.table_name == table_name
     ).order_by(ColumnProfile.profiled_at.desc()).first()
-    
+
     if not latest_run:
         raise HTTPException(status_code=404, detail="No profiles found for this table")
-    
+
     records = db.query(ColumnProfile).filter(
         ColumnProfile.table_name == table_name,
         ColumnProfile.profiled_at == latest_run[0]
     ).all()
-    
+
     return records

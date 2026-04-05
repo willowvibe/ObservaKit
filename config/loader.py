@@ -10,7 +10,6 @@ from typing import Any
 
 import yaml
 
-
 _ENV_VAR_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 
 

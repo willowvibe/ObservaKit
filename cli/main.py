@@ -14,10 +14,8 @@ Then use: observakit --help
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -132,7 +130,7 @@ def cmd_check(args) -> int:
     if failed:
         print(f"❌ {len(failed)} check(s) failed.\n")
         return 1
-    print(f"✅ All checks passed.\n")
+    print("✅ All checks passed.\n")
     return 0
 
 
@@ -148,7 +146,7 @@ def cmd_profile(args) -> int:
 
     profiles = data.get("profiles", [])
     if not profiles:
-        print(f"   No columns profiled (table may not exist or be empty).")
+        print("   No columns profiled (table may not exist or be empty).")
         return 0
 
     print(f"\n   Table: {table}  |  Columns profiled: {data.get('columns_profiled', 0)}\n")
