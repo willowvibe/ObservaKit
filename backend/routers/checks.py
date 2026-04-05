@@ -418,6 +418,11 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
     results = []
 
     for table_cfg in tables:
+        # Per-check enabled flag
+        if not table_cfg.get("enabled", True):
+            logger.debug("Skipping volume check for %s (enabled: false)", table_cfg.get("table"))
+            continue
+
         table_name = table_cfg["table"]
         dag_id = table_cfg.get("dag_id", "")
         threshold = table_cfg.get("anomaly_threshold", 0.3)

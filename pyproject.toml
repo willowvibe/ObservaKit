@@ -2,12 +2,15 @@
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["backend*", "cli*", "alerts*", "connectors*", "config*", "dbt_integration*"]
+
 [project]
 name = "observakit"
 version = "0.1.10"
 description = "Data Observability Starter Kit for small teams"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.110.0",
@@ -47,6 +50,9 @@ redshift = ["redshift-connector>=2.1"]
 soda-postgres = ["soda-core-postgres>=3.0"]
 soda-bigquery = ["soda-core-bigquery>=3.0"]
 soda-snowflake = ["soda-core-snowflake>=3.0"]
+duckdb = ["duckdb>=0.10"]
+databricks = ["databricks-sql-connector>=3.0"]
+trino = ["trino>=0.328"]
 
 [tool.ruff]
 line-length = 100
@@ -68,4 +74,5 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-# Run with coverage: pytest --cov=backend --cov=alerts --cov=connectors --cov-fail-under=70
+addopts = "--tb=short"
+# Enable coverage with: pytest --cov=backend --cov=alerts --cov=connectors --cov-fail-under=70

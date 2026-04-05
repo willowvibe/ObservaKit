@@ -33,10 +33,16 @@ def get_alert_dispatcher(channel: str, **kwargs) -> AlertDispatcher:
     elif channel == "webhook":
         from alerts.webhook import WebhookDispatcher
         return WebhookDispatcher(**kwargs)
+    elif channel == "teams":
+        from alerts.teams import TeamsDispatcher
+        return TeamsDispatcher(**kwargs)
+    elif channel == "pagerduty":
+        from alerts.pagerduty import PagerDutyDispatcher
+        return PagerDutyDispatcher(**kwargs)
     else:
         raise ValueError(
             f"Unsupported alert channel: '{channel}'. "
-            f"Supported: slack, email, discord, webhook"
+            f"Supported: slack, email, discord, webhook, teams, pagerduty"
         )
 
 
