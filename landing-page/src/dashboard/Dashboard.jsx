@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import {
   Activity,
   CheckCircle,
@@ -15,14 +15,34 @@ import {
   GitBranch,
   Layers,
   ArrowUp,
+  FlaskConical,
 } from 'lucide-react';
+import { mockApiFetch } from './demoData.js';
 
 // ---------------------------------------------------------------------------
-// Config
+// Config & fetch helper
 // ---------------------------------------------------------------------------
 const API_BASE = import.meta.env.VITE_API_URL || '';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
+// DemoContext lets every screen know whether to use mock data
+const DemoContext = createContext(false);
+
+function useApiFetch() {
+  const isDemo = useContext(DemoContext);
+  return useCallback((path, opts = {}) => {
+    if (isDemo) return mockApiFetch(path);
+    return fetch(`${API_BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json', ...(API_KEY ? { 'X-API-Key': API_KEY } : {}) },
+      ...opts,
+    }).then((res) => {
+      if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+      return res.json();
+    });
+  }, [isDemo]);
+}
+
+// Keep the bare apiFetch for the Dashboard shell's own connectivity check
 async function apiFetch(path, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(API_KEY ? { 'X-API-Key': API_KEY } : {}) },
@@ -57,6 +77,7 @@ const Spinner = () => <span className="spinner" />;
 
 /** Overview — live /status table grid */
 function OverviewScreen() {
+  const apiFetch = useApiFetch();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +93,7 @@ function OverviewScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFetch]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -149,6 +170,7 @@ function OverviewScreen() {
 
 /** Freshness screen — live lag data from /freshness/ */
 function FreshnessScreen() {
+  const apiFetch = useApiFetch();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
@@ -165,7 +187,7 @@ function FreshnessScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFetch]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -271,6 +293,7 @@ function FreshnessScreen() {
 
 /** Checks screen — run checks and see results */
 function ChecksScreen() {
+  const apiFetch = useApiFetch();
   const [results, setResults] = useState([]);
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -287,7 +310,7 @@ function ChecksScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFetch]);
 
   useEffect(() => { loadResults(); }, [loadResults]);
 
@@ -360,6 +383,7 @@ function ChecksScreen() {
 
 /** Alerts screen — alert log + suppression controls */
 function AlertsScreen() {
+  const apiFetch = useApiFetch();
   const [alerts, setAlerts] = useState([]);
   const [suppressions, setSuppressions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -380,7 +404,7 @@ function AlertsScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFetch]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -472,6 +496,7 @@ function AlertsScreen() {
 
 /** Profiling screen */
 function ProfilingScreen() {
+  const apiFetch = useApiFetch();
   const [table, setTable] = useState('');
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -524,6 +549,7 @@ function ProfilingScreen() {
 
 /** Schema Drift screen — column-level change history */
 function SchemaScreen() {
+  const apiFetch = useApiFetch();
   const [table, setTable]           = useState('');
   const [diffs, setDiffs]           = useState([]);
   const [loading, setLoading]       = useState(false);
@@ -659,6 +685,9 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [backendOk, setBackendOk] = useState(null);
 
+  // backendOk === false after the connectivity probe → switch to demo mode
+  const demoMode = backendOk === false;
+
   useEffect(() => {
     apiFetch('/').then(() => setBackendOk(true)).catch(() => setBackendOk(false));
   }, []);
@@ -675,41 +704,51 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="dashboard-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <Activity size={17} className="sidebar-logo-icon" />
-          <h2>ObservaKit</h2>
-          <div
-            className={`backend-dot ${backendOk === true ? 'dot-ok' : backendOk === false ? 'dot-fail' : 'dot-loading'}`}
-            title={backendOk === true ? 'Backend connected' : backendOk === false ? 'Backend unreachable' : 'Checking connection…'}
-          />
-        </div>
-        <nav className="sidebar-nav">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-              title={`${tab.label} (${tab.key})`}
-            >
-              {tab.icon}
-              <span style={{ flex: 1 }}>{tab.label}</span>
-              <span className="nav-key-hint">{tab.key}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <a href={import.meta.env.BASE_URL} className="nav-link-sm">← Home</a>
-          <a href="/docs" target="_blank" rel="noreferrer" className="nav-link-sm">API Docs ↗</a>
-          <a href="https://github.com/willowvibe/ObservaKit" target="_blank" rel="noreferrer" className="nav-link-sm">GitHub ↗</a>
-        </div>
-      </aside>
+    <DemoContext.Provider value={demoMode}>
+      <div className="dashboard-container">
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <Activity size={17} className="sidebar-logo-icon" />
+            <h2>ObservaKit</h2>
+            <div
+              className={`backend-dot ${backendOk === true ? 'dot-ok' : backendOk === false ? 'dot-fail' : 'dot-loading'}`}
+              title={backendOk === true ? 'Backend connected' : backendOk === false ? 'Demo mode — no backend' : 'Checking connection…'}
+            />
+          </div>
 
-      <main className="dashboard-main">
-        {(() => { const Screen = SCREENS[activeTab]; return <Screen />; })()}
-      </main>
-    </div>
+          {demoMode && (
+            <div className="demo-banner">
+              <FlaskConical size={13} />
+              Demo mode — sample data
+            </div>
+          )}
+
+          <nav className="sidebar-nav">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+                title={`${tab.label} (${tab.key})`}
+              >
+                {tab.icon}
+                <span style={{ flex: 1 }}>{tab.label}</span>
+                <span className="nav-key-hint">{tab.key}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-footer">
+            <a href={import.meta.env.BASE_URL} className="nav-link-sm">← Home</a>
+            <a href="/docs" target="_blank" rel="noreferrer" className="nav-link-sm">API Docs ↗</a>
+            <a href="https://github.com/willowvibe/ObservaKit" target="_blank" rel="noreferrer" className="nav-link-sm">GitHub ↗</a>
+          </div>
+        </aside>
+
+        <main className="dashboard-main">
+          {(() => { const Screen = SCREENS[activeTab]; return <Screen />; })()}
+        </main>
+      </div>
+    </DemoContext.Provider>
   );
 };
 
