@@ -66,6 +66,7 @@ from sqlalchemy.orm import Session
 from alerts.base import dispatch_alert
 from backend.models import ContractValidationResult, get_db
 from backend.routers.checks import _safe_eval_assertion
+from backend.security import is_safe_identifier, is_safe_table_reference
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,16 @@ def validate_contracts(
 
         violations = []
 
+        # --- Validate table reference before use ---
+        if not is_safe_table_reference(table):
+            logger.error(f"Contract {cid}: invalid table reference '{table}' — skipping")
+            violations.append({
+                "rule": "schema_fetch",
+                "passed": False,
+                "detail": f"Invalid table reference: {table}",
+            })
+            continue
+
         # --- Column presence and type checks ---
         try:
             live_schema = {col["name"]: col for col in connector.get_schema(table)}
@@ -130,6 +141,15 @@ def validate_contracts(
 
         for col_spec in contract.get("columns", []):
             col_name = col_spec["name"]
+            # Validate column name before use in SQL
+            if not col_name or not is_safe_identifier(col_name):
+                logger.error(f"Contract {cid}: invalid column name '{col_name}' — skipping column checks")
+                violations.append({
+                    "rule": f"column_check:{col_name}",
+                    "passed": False,
+                    "detail": f"Invalid column name: {col_name}",
+                })
+                continue
             expected_type = col_spec.get("type", "").lower()
             nullable = col_spec.get("nullable", True)
             unique = col_spec.get("unique", False)
@@ -265,10 +285,23 @@ def validate_contracts(
                 violations.append({"rule": "min_rows", "passed": False, "detail": str(e)})
 
         # --- Custom SQL rules ---
+        # Only allow SELECT queries for custom rules (no DDL, DML, or dangerous statements)
+        allowed_start_patterns = ("select", "with")  # Case-insensitive, lowercase for comparison
         for rule_spec in contract.get("rules", []):
             rule_name = rule_spec.get("name", "custom_rule")
-            sql = rule_spec.get("sql", "")
+            sql = rule_spec.get("sql", "").strip()
             assertion = rule_spec.get("assert", "result == 0")
+
+            # Validate SQL starts with SELECT or WITH
+            sql_lower = sql.lower()
+            if not any(sql_lower.startswith(pattern) for pattern in allowed_start_patterns):
+                violations.append({
+                    "rule": rule_name,
+                    "passed": False,
+                    "detail": f"Custom SQL rules must start with SELECT or WITH; got: {sql[:50]}",
+                })
+                continue
+
             try:
                 rule_result = connector.execute_query(sql)
                 result_value = 0

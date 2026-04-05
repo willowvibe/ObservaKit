@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import Optional
 
 from connectors.base import WarehouseConnector, resilient_query
+from backend.security import is_safe_identifier, is_safe_table_reference
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,8 @@ class DatabricksConnector(WarehouseConnector):
 
     @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
+        if not is_safe_table_reference(table) or not is_safe_identifier(column):
+            raise ValueError(f"Invalid table/column reference: table={table}, column={column}")
         conn = self.connect()
         try:
             with conn.cursor() as cur:
@@ -105,6 +108,8 @@ class DatabricksConnector(WarehouseConnector):
 
     @resilient_query()
     def get_row_count(self, table: str) -> int:
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         conn = self.connect()
         try:
             with conn.cursor() as cur:
@@ -149,6 +154,9 @@ class DatabricksConnector(WarehouseConnector):
 
             if not rows:
                 # Fallback: DESCRIBE TABLE (works for older metastore tables)
+                # Validate the table reference before using it in DESCRIBE
+                if not is_safe_table_reference(table):
+                    raise ValueError(f"Invalid table reference: {table}")
                 with conn.cursor() as cur:
                     cur.execute(f"DESCRIBE TABLE {table}")
                     rows = cur.fetchall()

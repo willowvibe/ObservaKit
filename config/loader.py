@@ -37,6 +37,11 @@ def load_config(path: str = "config/kit.yml") -> dict:
         slack_url = config["alerts"]["slack"]["webhook_url"]
         # → reads SLACK_WEBHOOK_URL from environment
     """
-    with open(path, "r") as f:
-        raw = yaml.safe_load(f)
+    try:
+        with open(path, "r") as f:
+            raw = yaml.safe_load(f)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Config file not found: {path}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML in config file {path}: {e}")
     return _expand_env_vars(raw)

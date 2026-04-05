@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Optional
 
 from connectors.base import WarehouseConnector, resilient_query
+from backend.security import is_safe_identifier, is_safe_table_reference
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,8 @@ class SnowflakeConnector(WarehouseConnector):
 
     @resilient_query()
     def get_max_timestamp(self, table: str, column: str) -> Optional[datetime]:
-        """Get the max value of a timestamp column."""
+        if not is_safe_table_reference(table) or not is_safe_identifier(column):
+            raise ValueError(f"Invalid table/column reference: table={table}, column={column}")
         conn = self.connect()
         try:
             cur = conn.cursor()
@@ -63,7 +65,8 @@ class SnowflakeConnector(WarehouseConnector):
 
     @resilient_query()
     def get_row_count(self, table: str) -> int:
-        """Get the current row count of a table."""
+        if not is_safe_table_reference(table):
+            raise ValueError(f"Invalid table reference: {table}")
         conn = self.connect()
         try:
             cur = conn.cursor()
@@ -128,6 +131,8 @@ class SnowflakeConnector(WarehouseConnector):
     @resilient_query()
     def get_compute_costs(self, days: int = 7) -> float:
         """Get compute credits used over the last N days."""
+        # Ensure days is an integer to prevent SQL injection
+        days = int(days)
         conn = self.connect()
         query = f"""
             SELECT SUM(CREDITS_USED) as total_credits

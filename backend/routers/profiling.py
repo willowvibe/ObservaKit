@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from backend.models import ColumnProfile, get_db
 from connectors.base import get_warehouse_connector
+from backend.security import is_safe_identifier, is_safe_table_reference
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,9 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
     """
     Run column-level profiling for a specific table.
     """
+    if not is_safe_table_reference(table_name):
+        raise HTTPException(status_code=400, detail=f"Invalid table reference: {table_name}")
+
     connector = get_warehouse_connector()
     schema = connector.get_schema(table_name)
 
@@ -35,6 +39,10 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
     profiles = []
     for col in schema:
         col_name = col["name"]
+        # Validate column name before using it in SQL
+        if not is_safe_identifier(col_name):
+            logger.error(f"Invalid column name '{col_name}' in table {table_name} - skipping")
+            continue
         col_type = col["type"].lower()
 
         is_numeric = any(t in col_type for t in ["int", "decimal", "numeric", "float", "real", "double"])
@@ -58,23 +66,23 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
             results = connector.execute_query(stats_query)
             if results:
                 res = results[0]
-                null_count = int(res["null_count"] or 0)
+                null_count = int(res.get("null_count", 0) or 0)
                 profile = ColumnProfile(
                     table_name=table_name,
                     column_name=col_name,
                     null_count=null_count,
                     null_pct=(null_count / row_count) if row_count > 0 else 0,
-                    distinct_count=int(res["distinct_count"]),
-                    min_value=res["min_val"],
-                    max_value=res["max_val"],
-                    mean_value=float(res["mean_val"]) if res["mean_val"] is not None else None,
+                    distinct_count=int(res.get("distinct_count", 0)),
+                    min_value=res.get("min_val"),
+                    max_value=res.get("max_val"),
+                    mean_value=float(res.get("mean_val")) if res.get("mean_val") is not None else None,
                     profiled_at=datetime.now(timezone.utc)
                 )
                 db.add(profile)
                 profiles.append({
                     "column": col_name,
                     "null_pct": round((null_count / row_count) * 100, 2) if row_count > 0 else 0,
-                    "distinct_count": int(res["distinct_count"])
+                    "distinct_count": int(res.get("distinct_count", 0))
                 })
         except Exception as e:
             logger.error(f"Failed to profile column {col_name} in {table_name}: {e}")
