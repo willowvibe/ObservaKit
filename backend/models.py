@@ -292,3 +292,82 @@ class ContractValidationResult(Base):
     # Full list of violation dicts: [{"rule": "...", "passed": false, "detail": "..."}]
     violations_json = Column(JSON, nullable=True)
     validated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+# =============================================================================
+# v0.2.0 Models
+# =============================================================================
+
+
+class BackfillEvent(Base):
+    """
+    Records detected backfill events — volume spikes caused by historical data
+    re-ingestion rather than genuine anomalies.
+
+    When a volume spike is flagged, ObservaKit checks the timestamp distribution
+    of the new rows.  If those rows carry event timestamps spanning a wide
+    historical range (rather than clustering around 'now'), the spike is
+    classified as a backfill and the alert severity is downgraded to INFO.
+    """
+
+    __tablename__ = "backfill_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    # Row count at detection time
+    row_count = Column(BigInteger, nullable=False)
+    # How far back the backfilled rows reach (seconds)
+    historical_span_seconds = Column(Float, nullable=True)
+    # Fraction of new rows whose event_timestamp is older than the rolling window
+    historical_row_fraction = Column(Float, nullable=True)
+    # Linked volume_record id for cross-reference
+    volume_record_id = Column(Integer, ForeignKey("volume_records.id"), nullable=True)
+    detected_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class LateArrivingRecord(Base):
+    """
+    Tracks late-arriving data events.
+
+    Distinct from freshness monitoring: freshness checks how old the *newest*
+    record is, while late-arriving data detection checks whether data that was
+    *expected* at a given time actually arrived within a configurable grace period.
+
+    Example: orders table should receive a nightly batch by 02:00 UTC.
+    If no new rows land before 03:00 UTC, a LATE_DATA alert fires.
+    """
+
+    __tablename__ = "late_arriving_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    # When data was expected (e.g. scheduled batch time)
+    expected_at = Column(DateTime, nullable=False)
+    # When the check ran
+    checked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    # Rows added since the expected_at window (None = could not query)
+    rows_arrived = Column(BigInteger, nullable=True)
+    # How many seconds past the deadline the data arrived (None = still missing)
+    delay_seconds = Column(Float, nullable=True)
+    # ok | late | missing
+    status = Column(String(20), nullable=False, default="ok")
+
+
+class MaintenanceLog(Base):
+    """
+    Audit trail for scheduled metadata purge runs.
+
+    Each row represents one purge execution, recording how many records were
+    deleted from each metadata table and any errors encountered.
+    """
+
+    __tablename__ = "maintenance_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # JSON map: {"freshness_records": 120, "volume_records": 80, ...}
+    deleted_counts = Column(JSON, nullable=False, default=dict)
+    retention_days = Column(Integer, nullable=False)
+    started_at = Column(DateTime, nullable=False)
+    finished_at = Column(DateTime, nullable=True)
+    status = Column(String(20), nullable=False, default="running")  # running | ok | error
+    error = Column(Text, nullable=True)

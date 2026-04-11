@@ -21,7 +21,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from alerts.base import dispatch_alert, get_lineage_impact
-from backend.models import CheckResult, VolumeRecord, get_db
+from backend.models import BackfillEvent, CheckResult, VolumeRecord, get_db
 from config.loader import load_config
 from connectors.base import get_warehouse_connector
 
@@ -504,16 +504,48 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
             sufficient_history = history_count >= MIN_HISTORY_FOR_ANOMALY
             is_anomaly = sufficient_history and deviation > threshold
 
-            # Store record
+            # ---- Backfill detection ----
+            # When an anomalous spike is detected, inspect the timestamp
+            # distribution of the new rows.  If a large fraction of them carry
+            # event timestamps that are significantly older than "now", the
+            # spike is almost certainly a historical backfill rather than a
+            # genuine anomaly, and the alert severity is downgraded to INFO.
+            is_backfill = False
+            backfill_meta: dict = {}
+            ts_col = table_cfg.get("timestamp_column")  # optional; enables backfill detection
+
+            if is_anomaly and ts_col:
+                is_backfill, backfill_meta = _detect_backfill(
+                    table_name, ts_col, current_count, window_days, _connector
+                )
+
+            # Store volume record
             record = VolumeRecord(
                 table_name=table_name,
                 dag_id=dag_id,
                 row_count=current_count,
                 rolling_avg=rolling_avg,
                 deviation_pct=deviation,
-                is_anomaly=is_anomaly,
+                is_anomaly=is_anomaly and not is_backfill,
             )
             db.add(record)
+            db.flush()  # get record.id for the BackfillEvent FK
+
+            if is_backfill:
+                backfill_record = BackfillEvent(
+                    table_name=table_name,
+                    row_count=current_count,
+                    historical_span_seconds=backfill_meta.get("historical_span_seconds"),
+                    historical_row_fraction=backfill_meta.get("historical_row_fraction"),
+                    volume_record_id=record.id,
+                )
+                db.add(backfill_record)
+                logger.info(
+                    "Backfill detected for %s — span=%.0fh, historical_fraction=%.1f%%",
+                    table_name,
+                    (backfill_meta.get("historical_span_seconds") or 0) / 3600,
+                    (backfill_meta.get("historical_row_fraction") or 0) * 100,
+                )
 
             # Update Prometheus gauges
             volume_gauge.labels(table=table_name, dag=dag_id).set(current_count)
@@ -524,13 +556,15 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
                 "row_count": current_count,
                 "rolling_avg": round(rolling_avg, 1),
                 "deviation_pct": round(deviation * 100, 1),
-                "is_anomaly": is_anomaly,
+                "is_anomaly": is_anomaly and not is_backfill,
+                "is_backfill": is_backfill,
+                "backfill_meta": backfill_meta if is_backfill else None,
                 "history_points": history_count,
             }
             results.append(result)
 
-            # Alert on anomaly
-            if is_anomaly:
+            # Alert on anomaly — suppress if backfill
+            if is_anomaly and not is_backfill:
                 _trigger_volume_alert(
                     table_name,
                     current_count,
@@ -538,6 +572,21 @@ def run_volume_checks(db: Session = Depends(get_db), connector=None):
                     deviation,
                     table_cfg.get("alert", "slack"),
                     db,
+                )
+            elif is_backfill:
+                # Emit a low-severity informational alert so the team is aware
+                dispatch_alert(
+                    alert_type="volume",
+                    table_name=table_name,
+                    subject=f"ℹ️ Backfill Detected: {table_name}",
+                    message=(
+                        f"Backfill detected for {table_name} — volume spike of "
+                        f"{deviation * 100:.1f}% suppressed as a historical backfill.\n"
+                        f"  Historical row fraction: {backfill_meta.get('historical_row_fraction', 0) * 100:.1f}%\n"
+                        f"  Historical span: {(backfill_meta.get('historical_span_seconds') or 0) / 3600:.1f}h"
+                    ),
+                    db=db,
+                    severity="info",
                 )
 
         except Exception as e:
@@ -572,6 +621,89 @@ def _trigger_volume_alert(
         db=db,
         severity="warn",
     )
+
+
+def _detect_backfill(
+    table_name: str,
+    ts_col: str,
+    current_count: int,
+    window_days: int,
+    connector,
+    backfill_historical_threshold: float = 0.4,
+    backfill_span_hours: float = 24.0,
+) -> tuple[bool, dict]:
+    """
+    Determine whether a volume spike is caused by a historical backfill.
+
+    Algorithm
+    ---------
+    1. Sample up to 10,000 rows from the table, reading only the timestamp column.
+    2. Compute the fraction of rows whose event timestamp predates the rolling
+       window cutoff (i.e. rows that are 'historically old').
+    3. Compute the time span between the oldest and newest row timestamps.
+    4. If *both* conditions are met, classify the spike as a backfill:
+         - historical_row_fraction >= backfill_historical_threshold (default 40%)
+         - historical_span_seconds  >= backfill_span_hours × 3600  (default 24h)
+
+    Returns (is_backfill, metadata_dict).
+    """
+    from backend.security import is_safe_identifier, is_safe_table_reference
+
+    if not is_safe_table_reference(table_name) or not is_safe_identifier(ts_col):
+        logger.warning("Backfill check skipped — unsafe table/column name: %s / %s", table_name, ts_col)
+        return False, {}
+
+    try:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=window_days)
+
+        # Sample the timestamp column; LIMIT keeps this cheap on large tables
+        rows = connector.execute_query(
+            f"SELECT {ts_col} FROM {table_name} ORDER BY {ts_col} DESC LIMIT 10000"
+        )
+        if not rows:
+            return False, {}
+
+        timestamps = []
+        for row in rows:
+            val = list(row.values())[0]
+            if val is None:
+                continue
+            if isinstance(val, datetime):
+                ts = val if val.tzinfo else val.replace(tzinfo=timezone.utc)
+            else:
+                try:
+                    ts = datetime.fromisoformat(str(val)).replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+            timestamps.append(ts)
+
+        if not timestamps:
+            return False, {}
+
+        oldest = min(timestamps)
+        newest = max(timestamps)
+        span_seconds = (newest - oldest).total_seconds()
+        historical_count = sum(1 for ts in timestamps if ts < cutoff)
+        historical_fraction = historical_count / len(timestamps)
+
+        is_backfill = (
+            historical_fraction >= backfill_historical_threshold
+            and span_seconds >= backfill_span_hours * 3600
+        )
+
+        meta = {
+            "historical_span_seconds": span_seconds,
+            "historical_row_fraction": round(historical_fraction, 4),
+            "sample_size": len(timestamps),
+            "oldest_row_ts": oldest.isoformat(),
+            "newest_row_ts": newest.isoformat(),
+        }
+        return is_backfill, meta
+
+    except Exception as exc:
+        logger.warning("Backfill detection failed for %s: %s", table_name, exc)
+        return False, {}
 
 
 def run_consistency_checks(connector, db: Session) -> list[dict]:

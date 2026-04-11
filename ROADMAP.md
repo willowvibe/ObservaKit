@@ -39,10 +39,10 @@
 
 ## v0.2.0 — Storage & Advanced Monitoring
 
-- [ ] Delta Lake support (via delta-rs)
-- [ ] Backfill detection (distinguish backfill spikes from true anomalies)
-- [ ] Late-arriving data detector (tracks expected vs actual data arrival times)
-- [ ] Scheduled metadata purge (auto-delete records older than N days)
+- [x] **Delta Lake support** (via delta-rs / `deltalake` Python library; S3, GCS, ADLS, local)
+- [x] **Backfill detection** (timestamp-distribution analysis to suppress false anomaly alerts during historical re-ingestion)
+- [x] **Late-arriving data detector** (cron-aware arrival windows with grace periods; fires alert when expected batch is missing)
+- [x] **Scheduled metadata purge** (configurable per-table retention; daily purge job with audit log)
 
 ## v0.3.0 — Incident Management & Analytics
 

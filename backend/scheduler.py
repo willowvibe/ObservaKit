@@ -196,6 +196,33 @@ def _run_finops_checks():
     _run_job("finops", _job)
 
 
+def _run_late_arriving_checks():
+    """Check for late-arriving data across all configured tables."""
+
+    def _job(db):
+        from backend.routers.late_arriving import poll_late_arriving
+        from connectors.base import get_warehouse_connector
+
+        connector = get_warehouse_connector()
+        try:
+            poll_late_arriving(db=db, connector=connector)
+        finally:
+            connector.close()
+
+    _run_job("late_arriving", _job)
+
+
+def _run_metadata_purge():
+    """Purge metadata records older than the configured retention window."""
+
+    def _job(db):
+        from backend.routers.maintenance import run_scheduled_purge
+
+        run_scheduled_purge(db=db)
+
+    _run_job("maintenance", _job, job_id="metadata_purge")
+
+
 def _run_dbt_watcher():
     """Poll dbt project's target/run_results.json and ingest if newer than last seen."""
 
@@ -226,6 +253,8 @@ def start_scheduler():
     schema_interval = int(os.getenv("SCHEMA_CHECK_INTERVAL", "360"))
     quality_interval = int(os.getenv("QUALITY_CHECK_INTERVAL", "60"))
     finops_interval = int(os.getenv("FINOPS_CHECK_INTERVAL", "720"))  # Default 12 hours
+    late_arriving_interval = int(os.getenv("LATE_ARRIVING_CHECK_INTERVAL", "30"))
+    maintenance_interval = int(os.getenv("MAINTENANCE_PURGE_INTERVAL", "1440"))  # Default 24 hours
 
     _scheduler.add_job(
         _run_freshness_checks,
@@ -267,6 +296,44 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # ---- Optional late-arriving data checks ----
+    try:
+        from config.loader import load_config
+
+        la_cfg = load_config("config/kit.yml").get("late_arriving", {})
+        if la_cfg.get("enabled", False):
+            _scheduler.add_job(
+                _run_late_arriving_checks,
+                trigger=IntervalTrigger(minutes=late_arriving_interval),
+                id="late_arriving_check",
+                name="Late-Arriving Data Check",
+                replace_existing=True,
+            )
+            logger.info("Late-arriving data detector enabled (polling every %dmin)", late_arriving_interval)
+    except Exception as e:
+        logger.warning("Could not configure late-arriving check: %s", e)
+
+    # ---- Optional scheduled metadata purge ----
+    try:
+        from config.loader import load_config
+
+        maint_cfg = load_config("config/kit.yml").get("maintenance", {})
+        if maint_cfg.get("enabled", False):
+            _scheduler.add_job(
+                _run_metadata_purge,
+                trigger=IntervalTrigger(minutes=maintenance_interval),
+                id="metadata_purge",
+                name="Metadata Purge",
+                replace_existing=True,
+            )
+            logger.info(
+                "Metadata purge enabled (every %dmin, retention=%d days)",
+                maintenance_interval,
+                int(maint_cfg.get("retention_days", 90)),
+            )
+    except Exception as e:
+        logger.warning("Could not configure metadata purge: %s", e)
+
     # ---- Optional dbt artifact watcher ----
     try:
         from config.loader import load_config
@@ -287,12 +354,15 @@ def start_scheduler():
 
     _scheduler.start()
     logger.info(
-        "Scheduler started — freshness=%dmin, volume=%dmin, schema=%dmin, quality=%dmin, finops=%dmin",
+        "Scheduler started — freshness=%dmin, volume=%dmin, schema=%dmin, "
+        "quality=%dmin, finops=%dmin, late_arriving=%dmin, maintenance=%dmin",
         freshness_interval,
         volume_interval,
         schema_interval,
         quality_interval,
         finops_interval,
+        late_arriving_interval,
+        maintenance_interval,
     )
 
 
