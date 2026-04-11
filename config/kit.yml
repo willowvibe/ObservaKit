@@ -208,6 +208,44 @@ consistency:
   #   tolerance_pct: 0.01  # within 1%
   #   alert: slack
 
+# ---- Late-Arriving Data Detector (v0.2.0) ----
+# Detects when expected data batches fail to arrive within a configured grace period.
+# This is distinct from freshness monitoring: freshness measures how old the newest
+# record is, while late-arriving detection checks whether the expected batch ran at all.
+#
+# Requires: pip install croniter  (for cron expression support)
+late_arriving:
+  enabled: false  # set to true to enable
+  schedule_minutes: 30
+  tables:
+    - table: public.orders
+      timestamp_column: inserted_at        # ingestion timestamp column
+      expected_arrival_cron: "0 2 * * *"  # expect data by 02:00 UTC daily
+      grace_period_minutes: 60             # alert if no rows by 03:00 UTC
+      min_rows_expected: 1                 # at least this many new rows required
+      alert: slack
+    # - table: public.customers
+    #   timestamp_column: created_at
+    #   expected_arrival_cron: "0 6 * * 1"  # weekly, Mondays at 06:00 UTC
+    #   grace_period_minutes: 120
+    #   min_rows_expected: 100
+    #   alert: slack
+
+# ---- Scheduled Metadata Purge (v0.2.0) ----
+# Automatically deletes metadata records older than the configured retention window
+# to prevent the metadata database from growing unboundedly.
+#
+# Per-table overrides are optional; any table not listed uses the global retention_days.
+maintenance:
+  enabled: false  # set to true to enable
+  schedule_hours: 24
+  retention_days: 90  # global default
+  overrides:          # per-table retention (optional)
+    schema_snapshots: 180
+    distribution_snapshots: 180
+    alert_logs: 30
+    maintenance_logs: 365
+
 # ---- dbt Integration ----
 dbt:
   enabled: false               # set to true to enable dbt artifact parsing

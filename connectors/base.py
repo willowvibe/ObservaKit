@@ -145,10 +145,15 @@ def get_warehouse_connector() -> WarehouseConnector:
         from connectors.trino import TrinoConnector
 
         return TrinoConnector()
+    elif warehouse_type in ("deltalake", "delta_lake", "delta"):
+        from connectors.deltalake import DeltaLakeConnector
+
+        return DeltaLakeConnector()
     else:
         raise ValueError(
             f"Unsupported warehouse type: '{warehouse_type}'. "
-            f"Supported: postgres, bigquery, snowflake, mysql, mariadb, redshift, duckdb, databricks, trino"
+            f"Supported: postgres, bigquery, snowflake, mysql, mariadb, redshift, "
+            f"duckdb, databricks, trino, deltalake"
         )
 
 

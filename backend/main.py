@@ -25,6 +25,8 @@ from backend.routers import (
     distribution,
     finops,
     freshness,
+    late_arriving,
+    maintenance,
     profiling,
     schema_diff,
     suppressions,
@@ -51,7 +53,7 @@ async def lifespan(app: FastAPI):
     logger.info(
         "\n"
         "  ╔═══════════════════════════════════════╗\n"
-        "  ║  🔭 ObservaKit v%s                    ║\n"
+        "  ║  🔭 ObservaKit v%-6s                 ║\n"
         "  ║  Data Observability Starter Kit       ║\n"
         "  ║  Built by WillowVibe DataSynapse      ║\n"
         "  ║  https://www.willowvibe.com           ║\n"
@@ -69,7 +71,7 @@ app = FastAPI(
         "Data Observability Starter Kit — self-hosted observability layer "
         "providing Freshness, Volume, Quality, Schema Drift, and Pipeline Health monitoring."
     ),
-    version="0.1.13",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -150,6 +152,18 @@ app.include_router(
     tags=["Alert Noise Suppression"],
     dependencies=[Depends(verify_api_key)],
 )
+app.include_router(
+    late_arriving.router,
+    prefix="/late-arriving",
+    tags=["Late-Arriving Data"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    maintenance.router,
+    prefix="/maintenance",
+    tags=["Maintenance"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 # ---- Embedded React Dashboard ----
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -169,7 +183,7 @@ if _STATIC_DIR.exists():
 async def root():
     return {
         "service": "ObservaKit",
-        "version": "0.1.13",
+        "version": "0.2.0",
         "status": "running",
         "docs": "/docs",
         "maintained_by": "WillowVibe DataSynapse",
@@ -219,7 +233,7 @@ async def healthz():
     payload = {
         "status": "ok" if db_ok else "degraded",
         "database": "ok" if db_ok else "unreachable",
-        "version": "0.1.13",
+        "version": "0.2.0",
     }
     status_code = 200 if db_ok else 503
     return JSONResponse(content=payload, status_code=status_code)
