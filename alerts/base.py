@@ -129,7 +129,7 @@ def _get_adaptive_dedup_window(noise_score: float, noise_cfg: dict) -> int:
     return min(adaptive, max_window)
 
 
-def _refresh_noise_record(db, table_name: str, alert_type: str) -> "AlertNoiseRecord | None":
+def _refresh_noise_record(db, table_name: str, alert_type: str):
     """
     Recalculate and persist the AlertNoiseRecord for (table_name, alert_type).
     Creates a new row if none exists. Returns the updated record (or None on error).

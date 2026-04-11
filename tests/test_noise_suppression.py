@@ -9,8 +9,6 @@ database or HTTP connections are required.
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-import pytest
-
 from alerts.base import (
     _compute_noise_score,
     _compute_severity_trend,
@@ -19,7 +17,6 @@ from alerts.base import (
     is_alert_deduped,
 )
 from backend.models import AlertLog, AlertNoiseRecord
-
 
 # ---------------------------------------------------------------------------
 # _compute_noise_score
