@@ -17,6 +17,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     create_engine,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
@@ -167,8 +168,38 @@ class AlertLog(Base):
     channel = Column(String(50), nullable=False)  # slack | email
     table_name = Column(String(255), nullable=True)
     message = Column(Text, nullable=False)
+    severity = Column(String(20), nullable=True)  # fail | warn | info
     sent_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     success = Column(Boolean, default=True)
+
+
+class AlertNoiseRecord(Base):
+    """
+    Per-(table, alert_type) noise tracking for adaptive throttling.
+
+    The noise_score (0–100) reflects how frequently this alert has been firing.
+    When the score exceeds the configured threshold the deduplication window is
+    stretched exponentially so noisy alerts are automatically suppressed without
+    any manual intervention.
+    """
+
+    __tablename__ = "alert_noise_records"
+    __table_args__ = (UniqueConstraint("table_name", "alert_type", name="uq_noise_table_type"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(255), nullable=False, index=True)
+    alert_type = Column(String(50), nullable=False, index=True)
+    # Rolling counts over three windows (refreshed on every dispatch_alert call)
+    count_1h = Column(Integer, default=0, nullable=False)
+    count_24h = Column(Integer, default=0, nullable=False)
+    count_7d = Column(Integer, default=0, nullable=False)
+    # Composite noise score 0-100 derived from the counts above
+    noise_score = Column(Float, default=0.0, nullable=False)
+    # Severity trend based on the last 10 alerts: stable | worsening | improving
+    severity_trend = Column(String(20), default="stable", nullable=False)
+    # Whether the adaptive window is currently longer than the base minimum
+    is_throttled = Column(Boolean, default=False, nullable=False)
+    last_calculated_at = Column(DateTime, nullable=True)
 
 
 class ColumnProfile(Base):

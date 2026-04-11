@@ -110,6 +110,28 @@ contracts:
 
 # ---- Alerting ----
 alerts:
+  # ---- Noise Suppression ----
+  # Automatically extends the dedup window for alerts that fire too frequently,
+  # preventing alert fatigue without any manual suppression commands.
+  #
+  # How the score works (0–100):
+  #   score = min(100, count_1h × 20 + count_24h × 2 + count_7d × 0.5)
+  #
+  # How the adaptive window works:
+  #   window = min(max_dedup_window_minutes, min_dedup_window_minutes × 2^(score/25))
+  #   score=0  → 60 min  (no throttle)
+  #   score=25 → 120 min (2×)
+  #   score=50 → 240 min (4×)
+  #   score=75 → 480 min (8× = max)
+  noise_suppression:
+    enabled: true
+    # Base dedup window when there is no noise (minutes)
+    min_dedup_window_minutes: 60
+    # Hard ceiling on the adaptive window (minutes); default = 8 hours
+    max_dedup_window_minutes: 480
+    # Alert count within 24 h that starts escalating the dedup window
+    auto_throttle_threshold: 10
+
   # Routing rules: match alerts to channels and recipients
   routing:
     - match:

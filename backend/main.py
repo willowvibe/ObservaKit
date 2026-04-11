@@ -19,6 +19,7 @@ from prometheus_client import make_asgi_app
 from alembic import command
 from backend.auth import verify_api_key
 from backend.routers import (
+    alert_noise,
     checks,
     contracts,
     distribution,
@@ -141,6 +142,12 @@ app.include_router(
     contracts.router,
     prefix="/contracts",
     tags=["Data Contracts"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    alert_noise.router,
+    prefix="/alerts/noise",
+    tags=["Alert Noise Suppression"],
     dependencies=[Depends(verify_api_key)],
 )
 
