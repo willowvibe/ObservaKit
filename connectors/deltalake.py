@@ -207,8 +207,6 @@ class DeltaLakeConnector(WarehouseConnector):
             pass  # fall through to full scan
 
         # Full scan fallback via PyArrow
-        import pyarrow.compute as pc
-
         dataset = dt.to_pyarrow_dataset()
         total = 0
         for batch in dataset.to_batches(columns=[dataset.schema.names[0]]):
