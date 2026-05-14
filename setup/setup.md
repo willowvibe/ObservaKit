@@ -61,7 +61,8 @@ https://github.com/willowvibe/ObservaKit
 
 2. Click the "Fork" button.
 
-![alt text](<Screenshot 2026-05-14 154028.png>)
+<img width="1359" height="635" alt="Screenshot 2026-05-14 154028" src="https://github.com/user-attachments/assets/a81725da-bbd3-4f93-bed9-ba767fd2eae6" />
+
 
 3. Create your own copy of the repository.
 
@@ -105,7 +106,8 @@ docker compose up --build
 
 The initial build may take a few minutes depending on your internet connection.
 
-![alt text](<Screenshot 2026-05-14 154522.png>)
+<img width="1395" height="773" alt="Screenshot 2026-05-14 154522" src="https://github.com/user-attachments/assets/1e355397-7536-4599-8a43-42a07472f406" />
+
 
 ---
 
@@ -117,7 +119,8 @@ After starting the containers, verify that ObservaKit is running by opening:
 http://localhost:8000/docs
 ```
 
-![alt text](<Screenshot 2026-05-14 155229.png>)
+<img width="1179" height="728" alt="Screenshot 2026-05-14 155229" src="https://github.com/user-attachments/assets/30d9ec74-2dd5-46b4-882f-a726c29d3dff" />
+
 
 If the Swagger UI loads successfully, the backend service is running correctly.
 
@@ -132,7 +135,8 @@ may not be enabled in the current configuration and can return:
 ```json
 {"detail":"Not Found"}
 ```
-![alt text](<Screenshot 2026-05-14 154653.png>)
+<img width="1231" height="715" alt="Screenshot 2026-05-14 154653" src="https://github.com/user-attachments/assets/24c16360-9584-4c66-90e4-bc67ad143995" />
+
 
 ### Check Running Containers
 
