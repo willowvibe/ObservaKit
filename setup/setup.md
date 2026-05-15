@@ -22,6 +22,7 @@ Verify using:
 ```bash
 docker compose version
 ```
+<img width="635" height="82" alt="image" src="https://github.com/user-attachments/assets/5aa9d768-ed68-4ba5-b62e-629e40b95dc8" />
 
 ### Windows Docker Issue
 
@@ -36,8 +37,9 @@ Run:
 ```bash
 wsl --update
 ```
-
 Then restart Docker Desktop.
+
+<img width="1065" height="86" alt="image" src="https://github.com/user-attachments/assets/93c98709-ea44-4492-88a6-435f15d128c2" />
 
 ### Docker Build Network Error
 
@@ -58,6 +60,7 @@ Retry the docker compose command again. Temporary network issues during image bu
 ```text
 https://github.com/willowvibe/ObservaKit
 ```
+<img width="1882" height="904" alt="image" src="https://github.com/user-attachments/assets/2cfbb0b1-2e26-4548-a046-e1d7fd93f107" />
 
 2. Click the "Fork" button.
 
@@ -76,6 +79,8 @@ git clone https://github.com/YOUR_USERNAME/ObservaKit.git
 cd ObservaKit
 ```
 
+<img width="766" height="270" alt="image" src="https://github.com/user-attachments/assets/db143f99-4812-4dd9-8106-5bb280c3583d" />
+
 ---
 
 ## 5. Configure Environment
@@ -85,6 +90,7 @@ cd ObservaKit
 ```bash
 copy .env.example .env
 ```
+<img width="729" height="85" alt="image" src="https://github.com/user-attachments/assets/d9e49aa0-7159-4fad-80c6-a44749f49589" />
 
 ### Linux/macOS Setup
 
@@ -108,7 +114,6 @@ The initial build may take a few minutes depending on your internet connection.
 
 <img width="1395" height="773" alt="Screenshot 2026-05-14 154522" src="https://github.com/user-attachments/assets/1e355397-7536-4599-8a43-42a07472f406" />
 
-
 ---
 
 ## 7. Verify Installation
@@ -118,9 +123,7 @@ After starting the containers, verify that ObservaKit is running by opening:
 ```text
 http://localhost:8000/docs
 ```
-
 <img width="1179" height="728" alt="Screenshot 2026-05-14 155229" src="https://github.com/user-attachments/assets/30d9ec74-2dd5-46b4-882f-a726c29d3dff" />
-
 
 If the Swagger UI loads successfully, the backend service is running correctly.
 
@@ -143,6 +146,7 @@ may not be enabled in the current configuration and can return:
 ```bash
 docker ps
 ```
+<img width="1666" height="137" alt="image" src="https://github.com/user-attachments/assets/72c8e455-f603-41b6-9f9b-0199ceadbca3" />
 
 Expected running containers:
 
@@ -165,6 +169,7 @@ After successful startup:
 ```text
 http://localhost:8000/docs
 ```
+<img width="1179" height="728" alt="Screenshot 2026-05-14 155229" src="https://github.com/user-attachments/assets/30d9ec74-2dd5-46b4-882f-a726c29d3dff" />
 
 - PostgreSQL container should be running successfully
 
@@ -175,3 +180,4 @@ http://localhost:8000/docs
 ```bash
 docker ps
 ```
+<img width="1666" height="137" alt="image" src="https://github.com/user-attachments/assets/72c8e455-f603-41b6-9f9b-0199ceadbca3" />
