@@ -144,7 +144,7 @@ This is my test plan for the ObservaKit data observability project assignment. I
   * JSON payloads from Airflow or Prefect with DAG details and states.
 * **Expected result**:
   * Parses the payload, normalizes status values, and inserts a `PipelineRun` record.
-* **Status**: `⚠️ unclear` (I noticed the endpoints do not perform payload checks or authentication keys, so anyone could call these endpoints and insert dummy data).
+* **Status**: `⚠️ unclear` 
 
 ---
 
