@@ -171,3 +171,17 @@ This is my test plan for the ObservaKit data observability project assignment. I
   * Malformed or invalid configurations (bad config).
   * Schema type mismatches and wrong data types.
   * Other potential system failure modes.
+ 
+### Detailed Integration Testing Matrix
+
+| Step | Function | Detailed Description & Expected Outcome | File (click) | Line range |
+|---|---|---|---|---|
+| **Task 1 – Ingestion & Freshness** | `poll_freshness` | Executes freshness checks for every table defined in `kit.yml`. For each table it creates a `FreshnessRecord` with `status: ok` when the data is fresh. **No alert is generated** in this happy‑path scenario. | [freshness.py](file:///c:/Users/bhavi/ObservaKit/backend/routers/freshness.py) | 76‑84 |
+| **Task 2 – Schema Drift (Initial Snapshot)** | `take_snapshot` | Captures the current schema of each configured table and persists a `SchemaSnapshot`. Since this is the first run, **no `SchemaDiff` records** are produced. | [schema_diff.py](file:///c:/Users/bhavi/ObservaKit/backend/routers/schema_diff.py) | 21‑27 |
+| **Task 3 – Schema Change & Drift Alert** | `take_snapshot` (re‑run) + `_trigger_schema_alert` | After a deliberate schema modification (e.g., adding a column), a second `take_snapshot` detects the differences, creates one or more `SchemaDiff` entries and **dispatches a drift alert** via `_trigger_schema_alert`. | [schema_diff.py](file:///c:/Users/bhavi/ObservaKit/backend/routers/schema_diff.py) & [base.py](file:///c:/Users/bhavi/ObservaKit/alerts/base.py) | 21‑27, 326‑336 |
+| **Task 4 – Data Contract Validation** | `validate_contracts` | Loads contract YAML files, validates column presence, data types, nullability, uniqueness, allowed values and any custom SQL rules. Persists a `ContractValidationResult`; if any rule fails, a **contract‑failure alert** is emitted. | [contracts.py](file:///c:/Users/bhavi/ObservaKit/backend/routers/contracts.py) | 83‑90 |
+| **Task 5 – Alert Suppression & Noise Throttling** | `dispatch_alert` (uses `is_alert_suppressed` & `is_alert_deduped`) | Before routing an alert, checks for a manual suppression window (`is_alert_suppressed`) and applies adaptive deduplication (`is_alert_deduped`) based on the current noise score. If allowed, the alert is sent and the noise record is refreshed. | [base.py](file:///c:/Users/bhavi/ObservaKit/alerts/base.py) | 328‑340 |
+| **Supporting Helpers** | `is_alert_suppressed` | Queries the `CheckSuppression` table to determine whether alerts for a given table are currently muted. | [base.py](file:///c:/Users/bhavi/ObservaKit/alerts/base.py) | 226‑236 |
+|  | `is_alert_deduped` | Performs adaptive deduplication using the noise‑aware window, preventing duplicate alerts within the calculated timeframe. | [base.py](file:///c:/Users/bhavi/ObservaKit/alerts/base.py) | 254‑266 |
+|  | `_refresh_noise_record` | After a successful alert dispatch, recomputes the noise score and updates `AlertNoiseRecord` for future deduplication calculations. | [base.py](file:///c:/Users/bhavi/ObservaKit/alerts/base.py) | 132‑213 |
+
