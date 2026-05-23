@@ -161,3 +161,13 @@ This is my test plan for the ObservaKit data observability project assignment. I
 
 * **Database performance**: I couldn't test how fast the schema diff fetches column data if the database has thousands of tables.
 * **Third-party API rate limits**: I am not sure if Slack or Teams will block us if we send hundreds of alerts before the noise throttling turns on.
+
+---
+
+## 5. Future Testing Considerations / Improvements
+
+* **Edge Case Coverage**: Expand test scenarios to cover failure modes and edge cases, such as:
+  * Database connection failures (bad DB connection).
+  * Malformed or invalid configurations (bad config).
+  * Schema type mismatches and wrong data types.
+  * Other potential system failure modes.
