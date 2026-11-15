@@ -12,9 +12,9 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "assets" / "screenshots"
-# The FastAPI build serves the landing page at /ui/; the React dashboard
-# route is /ui/ui (basename /ui/ + <Route path="/ui">).
-UI = "http://localhost:8000/ui/ui"
+# The FastAPI build serves the React dashboard at /ui/ (its router shows
+# Dashboard at "/" and the landing page at "/landing").
+UI = "http://localhost:8000/ui/"
 GRAFANA = "http://localhost:3001"
 CLI_HTML = ROOT / "docs" / "assets" / "_cli.html"
 
@@ -113,10 +113,11 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     wait_for("http://localhost:8000/healthz")
     wait_for("http://localhost:3001/api/health")
-    # Give Prometheus one scrape interval to pick up the seeder's checks.
+    # Let Prometheus scrape several times so the Grafana trend panels have
+    # more than a single point to draw a line through.
     import time
 
-    time.sleep(20)
+    time.sleep(60)
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()

@@ -12,9 +12,9 @@ from pathlib import Path
 from alembic.config import Config
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import make_asgi_app
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from alembic import command
 from backend.auth import verify_api_key
@@ -166,17 +166,29 @@ app.include_router(
 )
 
 # ---- Embedded React Dashboard ----
+class _SPAStaticFiles(StaticFiles):
+    """Serve index.html for client-side routes instead of a 404 page."""
+
+    async def get_response(self, path, scope):
+        try:
+            response = await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            response = None
+        # Extensionless paths under /ui are React Router routes, not missing
+        # assets: hand them to the SPA. Real asset misses keep their 404.
+        is_spa_route = "." not in path.rsplit("/", 1)[-1]
+        if (response is None or response.status_code == 404) and is_spa_route:
+            return await super().get_response("index.html", scope)
+        return response
+
+
 _STATIC_DIR = Path(__file__).parent / "static"
 if _STATIC_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=str(_STATIC_DIR), html=True), name="ui")
-
-    @app.get("/ui/{full_path:path}", include_in_schema=False)
-    async def serve_ui(full_path: str):
-        """SPA fallback — serve index.html for any /ui/* path not matched by static files."""
-        index = _STATIC_DIR / "index.html"
-        if index.exists():
-            return FileResponse(str(index))
-        return {"detail": "Dashboard not built. Run: make ui-build"}
+    app.mount(
+        "/ui", _SPAStaticFiles(directory=str(_STATIC_DIR), html=True), name="ui"
+    )
 
 
 @app.get("/", tags=["Health"])

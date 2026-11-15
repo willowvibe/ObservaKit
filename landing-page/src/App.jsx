@@ -428,11 +428,22 @@ function LandingPage() {
 // ---------------------------------------------------------------------------
 // App Router
 // ---------------------------------------------------------------------------
+const IS_FASTAPI_BUILD = import.meta.env.BASE_URL === '/ui/';
+
 function App() {
   return (
     <Router basename={import.meta.env.BASE_URL}>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        {IS_FASTAPI_BUILD ? (
+          <>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/landing" element={<LandingPage />} />
+          </>
+        ) : (
+          <Route path="/" element={<LandingPage />} />
+        )}
+        {/* Keep /ui reachable in both builds: the landing page's
+            "Open Dashboard" link and bookmarked URLs use it. */}
         <Route path="/ui" element={<Dashboard />} />
       </Routes>
     </Router>
