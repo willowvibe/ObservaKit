@@ -54,3 +54,8 @@ prometheus/data/
 # Soda / Great Expectations
 .soda/
 great_expectations/uncommitted/
+
+# Demo video work
+video-work/
+observakit-demo.mp4
+observakit-demo-poster.jpg

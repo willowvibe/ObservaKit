@@ -9,6 +9,9 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        VITE_API_KEY: ${OBSERVAKIT_API_KEY:-}
+    image: observakit-backend:local
     container_name: observakit-backend
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -18,6 +21,7 @@ services:
       - METADATA_DB_USER=${METADATA_DB_USER:-observakit}
       - METADATA_DB_PASSWORD=${METADATA_DB_PASSWORD:-changeme}
       - METADATA_DB_NAME=${METADATA_DB_NAME:-observakit}
+      - OBSERVAKIT_API_KEY=${OBSERVAKIT_API_KEY:-}
       - WAREHOUSE_TYPE=${WAREHOUSE_TYPE:-postgres}
       - WAREHOUSE_HOST=${WAREHOUSE_HOST:-host.docker.internal}
       - WAREHOUSE_PORT=${WAREHOUSE_PORT:-5432}
