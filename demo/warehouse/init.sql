@@ -34,7 +34,7 @@ SELECT
     (ARRAY['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'])[1 + (i % 5)],
     round((20 + (i % 300))::numeric, 2),
     now() - (interval '1 day' * (i % 7)) - interval '2 hours',
-    now() - (interval '1 day' * (i % 7)) - interval '1 hour'
+    now() - (interval '1 day' * (i % 7)) - interval '10 minutes'
 FROM generate_series(1, 500) AS i;
 
 CREATE TABLE order_items (

@@ -17,8 +17,8 @@ freshness:
   tables:
     - table: public.orders
       timestamp_column: updated_at
-      warn_after: 1h
-      fail_after: 2h
+      warn_after: 2h
+      fail_after: 6h
     - table: public.customers
       timestamp_column: updated_at
       warn_after: 1h

@@ -28,7 +28,7 @@ services:
         condition: service_healthy
 
   grafana:
-    ports:
+    ports: !override
       - "${GRAFANA_PORT:-3001}:3000"
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
