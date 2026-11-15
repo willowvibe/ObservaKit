@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build screenshot archive
+        run: |
+          mkdir -p dist
+          if [ -d docs/assets/screenshots ]; then
+            zip -r dist/observakit-screenshots.zip docs/assets/screenshots
+          else
+            echo "::warning::docs/assets/screenshots is missing; release will have no screenshot archive"
+          fi
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" {flag=1}
+            flag && /^## \[/ && $0 !~ "^## \\[" ver "\\]" {exit}
+            flag {print}
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "ObservaKit $GITHUB_REF_NAME" > release-notes.md
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f dist/observakit-screenshots.zip ]; then
+            gh release create "$GITHUB_REF_NAME" dist/observakit-screenshots.zip \
+              --title "ObservaKit $GITHUB_REF_NAME" \
+              --notes-file release-notes.md \
+              --verify-tag
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "ObservaKit $GITHUB_REF_NAME" \
+              --notes-file release-notes.md \
+              --verify-tag
+          fi

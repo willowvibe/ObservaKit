@@ -13,7 +13,8 @@
   <img src="https://img.shields.io/github/stars/willowvibe/ObservaKit?style=flat-square" />
   <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" />
   <img src="https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white" />
-  <img src="https://img.shields.io/badge/version-0.1.10-green?style=flat-square" />
+  <img src="https://img.shields.io/github/v/release/willowvibe/ObservaKit?style=flat-square&label=release" />
+  <img src="https://img.shields.io/github/actions/workflow/status/willowvibe/ObservaKit/release.yml?style=flat-square&label=release%20workflow" />
 </p>
 
 <p align="center">
