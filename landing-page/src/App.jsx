@@ -40,6 +40,11 @@ const IS_FASTAPI_BUILD = import.meta.env.BASE_URL === '/ui/';
 const DEMO_VIDEO_URL =
   'https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo-v2.mp4';
 
+// GitHub Pages serves .mp4 as video/mp4, so it streams inline. Release assets
+// are served as application/octet-stream + Content-Disposition: attachment,
+// which makes browsers download them instead of playing them.
+const DEMO_VIDEO_LOCAL_URL = `${import.meta.env.BASE_URL}observakit-demo.mp4`;
+
 // ---------------------------------------------------------------------------
 // Stats Row
 // ---------------------------------------------------------------------------
@@ -240,14 +245,21 @@ function DemoVideo() {
         onPause={() => setPlaying(false)}
         onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
       >
+        <source src={DEMO_VIDEO_LOCAL_URL} type="video/mp4" />
         <source src={DEMO_VIDEO_URL} type="video/mp4" />
         Your browser does not support the video tag.{' '}
         <a href={DEMO_VIDEO_URL}>Download the MP4</a>.
       </video>
-      {(!playing || muted) && (
+      {!playing && (
+        <button type="button" className="demo-play-button" onClick={playWithSound}>
+          <Play size={22} />
+          Play demo
+        </button>
+      )}
+      {playing && muted && (
         <button type="button" className="demo-audio-button" onClick={playWithSound}>
-          {playing ? <Volume2 size={16} /> : <Play size={16} />}
-          {playing ? 'Unmute narration' : 'Play with sound'}
+          <Volume2 size={16} />
+          Unmute narration
         </button>
       )}
     </div>

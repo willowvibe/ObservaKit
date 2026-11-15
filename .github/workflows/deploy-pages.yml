@@ -35,6 +35,12 @@ jobs:
       - name: Build project
         working-directory: ./landing-page
         run: npm run build
+      - name: Fetch demo video for inline playback
+        run: |
+          curl -fsSL --retry 3 \
+            -o landing-page/dist/observakit-demo.mp4 \
+            https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo-v2.mp4
+          test -s landing-page/dist/observakit-demo.mp4
       - name: Setup Pages
         uses: actions/configure-pages@v4
         with:
