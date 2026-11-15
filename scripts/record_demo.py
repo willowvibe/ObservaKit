@@ -51,6 +51,26 @@ def segment_durations() -> list[float]:
     return durations
 
 
+def probe_duration(path: Path) -> float:
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=nw=1:nk=1",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise SystemExit(f"ffprobe failed for {path}: {result.stderr.strip()}")
+    return float(result.stdout.strip())
+
+
 def build_timeline() -> dict:
     durations = segment_durations()
     holds = [max(base, length + 0.5) for base, length in zip(BASE_HOLDS, durations)]
@@ -151,7 +171,14 @@ def main() -> None:
         def scene(index: int, action) -> None:
             started = time.monotonic()
             action()
-            remaining = holds[index] - (time.monotonic() - started)
+            elapsed = time.monotonic() - started
+            hold = holds[index]
+            if elapsed > hold + 0.5:
+                raise SystemExit(
+                    f"scene {index} took {elapsed:.2f}s, longer than its "
+                    f"{hold:.2f}s hold; narration would desync"
+                )
+            remaining = hold - elapsed
             if remaining > 0:
                 page.wait_for_timeout(int(remaining * 1000))
 
@@ -209,6 +236,13 @@ def main() -> None:
     if target.exists():
         target.unlink()
     raw.replace(target)
+    recorded = probe_duration(target)
+    if abs(recorded - timeline["total"]) > 0.5:
+        raise SystemExit(
+            f"recording is {recorded:.2f}s but the planned timeline is "
+            f"{timeline['total']:.2f}s; narration would desync"
+        )
+    print(f"recording: {recorded:.2f}s (timeline {timeline['total']:.2f}s)")
     print(target)
 
 
