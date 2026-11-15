@@ -323,7 +323,7 @@ ObservaKit/
 | **Discord alerts** | ✅ | ❌ | ❌ | ❌ |
 | **Vendor lock-in** | ❌ None | 🔒 High | 🔒 High | ❌ None |
 
-## Real-World Use Cases
+## Illustrative Use Cases
 
 - **Data migration audits** — Run ObservaKit against source and destination simultaneously to guarantee zero schema drift and 100% volume parity during cloud migrations.
 - **dbt project health** — Parse `run_results.json` natively; no Elementary package or dbt Cloud required. Track model success rates and test failures in one place.

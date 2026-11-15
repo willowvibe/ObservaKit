@@ -260,5 +260,5 @@ public.customers   ok          ok       ok        fail
 - [Adding Checks](adding_checks.md) — Soda Core, Great Expectations, and custom SQL
 - [Alert Setup](alerting_setup.md) — Slack, Email, Discord, generic webhook
 - [Data Contracts](data-contracts.md) — Enforcing producer-consumer agreements
-- [Real-World Use Cases](real-world-use-cases.md) — How teams use ObservaKit in production
+- [Illustrative Use Cases](real-world-use-cases.md) — Illustrative ways teams use ObservaKit
 - [Troubleshooting](troubleshooting.md) — Common issues and fixes

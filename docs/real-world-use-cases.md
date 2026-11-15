@@ -55,7 +55,7 @@ Illustrative ways teams use ObservaKit to solve common data problems.
 
 Enable Distribution Drift on `public.orders.discount_pct` with `type: numeric`. ObservaKit snapshots the histogram every hour. When `discount_pct` suddenly shifts from a mean of 15% to a mean of 100%, the mean_shift detector fires an alert within 60 minutes.
 
-**Other examples of distribution drift in production:**
+**Other examples of distribution drift:**
 
 | Column | Drift type | Root cause |
 |--------|-----------|------------|
@@ -167,7 +167,7 @@ distribution:
           type: categorical
 ```
 
-The alert fires when null % shifts from 0.1% to 2.1% — within the first week of the regression, not two weeks later.
+The alert fires once the null share crosses the configured threshold — early in the regression, before the failure compounds.
 
 ---
 
