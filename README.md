@@ -36,7 +36,7 @@
 
 [![Watch the 2-minute ObservaKit demo](docs/assets/observakit-demo-poster.jpg)](https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4)
 
-A real run against the seeded demo warehouse: the deliberately stale `customers` table, quality checks, and the dashboard. The MP4 is 1080p with burned-in captions. The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
+A real run against the seeded demo warehouse: the deliberately stale `customers` table, quality checks, and the dashboard. The MP4 is 1080p with a voiceover and no burned-in captions. The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
 
 ## Who this is for
 
