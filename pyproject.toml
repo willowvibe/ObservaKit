@@ -7,7 +7,7 @@ include = ["backend*", "cli*", "alerts*", "connectors*", "config*", "dbt_integra
 
 [project]
 name = "observakit"
-version = "0.1.14"
+version = "1.0.0"
 description = "Data Observability Starter Kit for small teams"
 readme = "README.md"
 license = "MIT"
@@ -15,7 +15,7 @@ requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.29.0",
-    "sqlalchemy>=2.0.0",
+    "sqlalchemy>=2.0.0,<2.1",
     "psycopg2-binary>=2.9.9",
     "apscheduler>=3.10.4",
     "prometheus-client>=0.20.0",

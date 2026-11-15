@@ -3,6 +3,7 @@ ObservaKit — Data Observability Starter Kit
 FastAPI Backend Service
 """
 
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -10,11 +11,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from alembic.config import Config
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import make_asgi_app
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from alembic import command
 from backend.auth import verify_api_key
@@ -71,7 +72,7 @@ app = FastAPI(
         "Data Observability Starter Kit — self-hosted observability layer "
         "providing Freshness, Volume, Quality, Schema Drift, and Pipeline Health monitoring."
     ),
-    version="0.1.14",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -166,24 +167,55 @@ app.include_router(
 )
 
 # ---- Embedded React Dashboard ----
+class _SPAStaticFiles(StaticFiles):
+    """Serve index.html for client-side routes instead of a 404 page."""
+
+    async def get_response(self, path, scope):
+        try:
+            response = await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            response = None
+        # Extensionless paths under /ui are React Router routes, not missing
+        # assets: hand them to the SPA. Real asset misses keep their 404.
+        is_spa_route = "." not in path.rsplit("/", 1)[-1]
+        if is_spa_route and (response is None or response.status_code == 404):
+            return await super().get_response("index.html", scope)
+        if response is None:
+            raise StarletteHTTPException(status_code=404)
+        return response
+
+
+# Serve the dashboard's API key from the backend's runtime environment. This
+# must be registered before the /ui static mount so it takes precedence, and
+# lets one image work with any OBSERVAKIT_API_KEY without a rebuild.
+@app.get("/ui/config.js", include_in_schema=False)
+async def ui_config() -> Response:
+    key = json.dumps(os.getenv("OBSERVAKIT_API_KEY", ""))
+    return Response(
+        content=f"window.__OBSERVAKIT_API_KEY__ = {key};\n",
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-store",
+            "Cross-Origin-Resource-Policy": "same-origin",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 _STATIC_DIR = Path(__file__).parent / "static"
 if _STATIC_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=str(_STATIC_DIR), html=True), name="ui")
-
-    @app.get("/ui/{full_path:path}", include_in_schema=False)
-    async def serve_ui(full_path: str):
-        """SPA fallback — serve index.html for any /ui/* path not matched by static files."""
-        index = _STATIC_DIR / "index.html"
-        if index.exists():
-            return FileResponse(str(index))
-        return {"detail": "Dashboard not built. Run: make ui-build"}
+    app.mount(
+        "/ui", _SPAStaticFiles(directory=str(_STATIC_DIR), html=True), name="ui"
+    )
 
 
 @app.get("/", tags=["Health"])
 async def root():
     return {
         "service": "ObservaKit",
-        "version": "0.1.14",
+        "version": "1.0.0",
         "status": "running",
         "docs": "/docs",
         "maintained_by": "WillowVibe DataSynapse",
@@ -233,7 +265,7 @@ async def healthz():
     payload = {
         "status": "ok" if db_ok else "degraded",
         "database": "ok" if db_ok else "unreachable",
-        "version": "0.1.14",
+        "version": "1.0.0",
     }
     status_code = 200 if db_ok else 503
     return JSONResponse(content=payload, status_code=status_code)
@@ -248,6 +280,7 @@ async def get_status():
     """
     from datetime import timedelta
 
+    from sqlalchemy import Integer, cast
     from sqlalchemy import func as sqlfunc
 
     from backend.models import (
@@ -306,7 +339,7 @@ async def get_status():
             db.query(
                 CheckResult.table_name,
                 sqlfunc.count(CheckResult.id).label("total"),
-                sqlfunc.sum(CheckResult.passed.cast(sqlfunc.Integer())).label("passed"),
+                sqlfunc.sum(cast(CheckResult.passed, Integer)).label("passed"),
                 sqlfunc.max(CheckResult.executed_at).label("latest"),
             )
             .filter(CheckResult.executed_at >= cutoff_24h)

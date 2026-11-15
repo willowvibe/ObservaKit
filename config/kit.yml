@@ -2,10 +2,9 @@
 # ObservaKit — Master Configuration
 # =============================================================================
 
-# Active warehouse connection (references config/warehouses/*.yml)
+# Active warehouse connection — credentials come from environment variables (.env)
 warehouse:
   type: postgres  # postgres | bigquery | snowflake
-  config_file: config/warehouses/postgres.yml
 
 # Orchestrator integration
 orchestrator:

@@ -53,7 +53,7 @@
       },
       "targets": [
         {
-          "expr": "count(data_freshness_lag_seconds < 3600)",
+          "expr": "count(data_freshness_lag_seconds < 3600) or vector(0)",
           "legendFormat": "Healthy"
         }
       ],
@@ -77,7 +77,7 @@
       },
       "targets": [
         {
-          "expr": "count(data_freshness_lag_seconds >= 3600 and data_freshness_lag_seconds < 7200)",
+          "expr": "count(data_freshness_lag_seconds >= 3600 and data_freshness_lag_seconds < 7200) or vector(0)",
           "legendFormat": "Warning"
         }
       ],
@@ -101,7 +101,7 @@
       },
       "targets": [
         {
-          "expr": "count(data_freshness_lag_seconds >= 7200)",
+          "expr": "count(data_freshness_lag_seconds >= 7200) or vector(0)",
           "legendFormat": "Failed"
         }
       ],

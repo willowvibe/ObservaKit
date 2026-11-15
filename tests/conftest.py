@@ -8,12 +8,12 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.models import Base
-
 
 @pytest.fixture
 def db_session():
     """Create an in-memory SQLite database session for testing."""
+    from backend.models import Base
+
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(bind=engine)
     TestSession = sessionmaker(bind=engine)

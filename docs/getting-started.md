@@ -75,7 +75,7 @@ docker compose up -d
 Check it's running:
 ```bash
 curl http://localhost:8000/healthz
-# → {"status": "ok", "database": "ok", "version": "0.1.10"}
+# → {"status": "ok", "database": "ok", "version": "1.0.0"}
 ```
 
 ---
@@ -103,7 +103,6 @@ Edit `config/kit.yml`. At minimum, add your table to the freshness and volume mo
 ```yaml
 warehouse:
   type: postgres   # or mysql | snowflake | bigquery | redshift
-  config_file: config/warehouses/postgres.yml
 
 freshness:
   enabled: true
@@ -260,5 +259,5 @@ public.customers   ok          ok       ok        fail
 - [Adding Checks](adding_checks.md) — Soda Core, Great Expectations, and custom SQL
 - [Alert Setup](alerting_setup.md) — Slack, Email, Discord, generic webhook
 - [Data Contracts](data-contracts.md) — Enforcing producer-consumer agreements
-- [Real-World Use Cases](real-world-use-cases.md) — How teams use ObservaKit in production
+- [Illustrative Use Cases](real-world-use-cases.md) — Illustrative ways teams use ObservaKit
 - [Troubleshooting](troubleshooting.md) — Common issues and fixes

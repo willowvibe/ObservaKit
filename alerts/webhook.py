@@ -13,7 +13,7 @@ This enables integration with any system that accepts webhooks:
 Payload format (sent as application/json):
   {
     "source": "observakit",
-    "version": "0.1.7",
+    "version": "1.0.0",
     "alert_type": "volume",
     "table_name": "public.orders",
     "subject": "🔴 Volume Anomaly: public.orders",
@@ -95,7 +95,7 @@ class WebhookDispatcher(AlertDispatcher):
 
         payload = {
             "source": "observakit",
-            "version": "0.1.10",
+            "version": "1.0.0",
             "alert_type": alert_type or "unknown",
             "table_name": table_name,
             "subject": subject,

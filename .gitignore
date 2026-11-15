@@ -38,6 +38,9 @@ Thumbs.db
 htmlcov/
 .tox/
 
+# Generated UI build tree (served by backend at /ui)
+backend/static/
+
 # Docker
 *.log
 
@@ -54,3 +57,8 @@ prometheus/data/
 # Soda / Great Expectations
 .soda/
 great_expectations/uncommitted/
+
+# Demo video work
+video-work/
+observakit-demo.mp4
+observakit-demo-poster.jpg

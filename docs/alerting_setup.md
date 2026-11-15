@@ -188,7 +188,7 @@ The generic webhook channel posts a signed JSON payload to any HTTP endpoint.
 ```json
 {
   "source": "observakit",
-  "version": "0.1.10",
+  "version": "1.0.0",
   "alert_type": "volume",
   "table_name": "public.orders",
   "subject": "🔴 Volume Anomaly: public.orders",

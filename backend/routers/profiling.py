@@ -37,6 +37,9 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
         return {"message": f"Table {table_name} is empty, skipping profiling"}
 
     profiles = []
+    # One timestamp for the whole run so GET /profiling/latest/{table} returns
+    # every column, not just the one written in the final loop iteration.
+    profiled_at = datetime.now(timezone.utc)
     for col in schema:
         col_name = col["name"]
         # Validate column name before using it in SQL
@@ -80,7 +83,7 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
                     mean_value=float(res.get("mean_val"))
                     if res.get("mean_val") is not None
                     else None,
-                    profiled_at=datetime.now(timezone.utc),
+                    profiled_at=profiled_at,
                 )
                 db.add(profile)
                 profiles.append(
@@ -90,6 +93,8 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
                         if row_count > 0
                         else 0,
                         "distinct_count": int(res.get("distinct_count", 0)),
+                        "min_value": res.get("min_val"),
+                        "max_value": res.get("max_val"),
                     }
                 )
         except Exception as e:

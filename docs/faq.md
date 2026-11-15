@@ -16,7 +16,7 @@ Great Expectations is a quality-check library. You write tests, run them, and ge
 
 ### How is it different from Monte Carlo / Metaplane?
 
-Monte Carlo and Metaplane are excellent SaaS products that cost $30k–$100k/year. They're the right choice for large enterprise teams. ObservaKit is for **1–5 person data teams at startups** who need the same capabilities without the sales process or the budget. You self-host it, you own your data, and it's free forever.
+Monte Carlo and Metaplane are excellent commercial SaaS products built for large enterprise teams. ObservaKit is for **1–5 person data teams at startups** who need the same capabilities without the sales process or the budget. You self-host it, you own your data, and it's free forever.
 
 ### Does ObservaKit send my data anywhere?
 

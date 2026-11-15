@@ -111,6 +111,12 @@ def poll_freshness(db: Session = Depends(get_db), connector=None):
             _connector = connector or get_warehouse_connector()
             last_updated = _connector.get_max_timestamp(table_name, ts_col)
 
+            # Some warehouses (DuckDB, MySQL, Postgres TIMESTAMP WITHOUT TIME ZONE)
+            # return naive datetimes. Treat naive values as UTC so the subtraction
+            # below never mixes naive and aware datetimes.
+            if last_updated is not None and last_updated.tzinfo is None:
+                last_updated = last_updated.replace(tzinfo=timezone.utc)
+
             now = datetime.now(timezone.utc)
             lag_seconds = (now - last_updated).total_seconds() if last_updated else None
 

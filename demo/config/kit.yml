@@ -1,0 +1,84 @@
+# Demo-only configuration mounted over /app/config by docker-compose.demo.yml.
+# No warehouse config_file: connectors read WAREHOUSE_* environment variables.
+
+warehouse:
+  type: postgres
+
+orchestrator:
+  type: airflow
+  airflow:
+    base_url: ${AIRFLOW_BASE_URL:-http://localhost:8080}
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+
+freshness:
+  enabled: true
+  schedule_minutes: 15
+  tables:
+    - table: public.orders
+      timestamp_column: updated_at
+      warn_after: 2h
+      fail_after: 6h
+    - table: public.customers
+      timestamp_column: updated_at
+      warn_after: 1h
+      fail_after: 6h
+
+volume:
+  enabled: true
+  schedule_minutes: 60
+  rolling_window_days: 7
+  tables:
+    - table: public.orders
+      dag_id: load_orders
+      anomaly_threshold: 0.3
+
+schema_drift:
+  enabled: true
+  schedule_minutes: 360
+  tables:
+    - public.orders
+    - public.customers
+    - public.order_items
+
+quality:
+  enabled: true
+  schedule_minutes: 60
+  engine: soda
+  checks_dir: checks/
+  custom_sql:
+    - name: "No negative order amounts"
+      query: "SELECT COUNT(*) AS count FROM public.orders WHERE amount < 0"
+      assert: "result == 0"
+      table: public.orders
+    - name: "No orphaned order items"
+      query: |
+        SELECT COUNT(*) AS count
+        FROM public.order_items oi
+        LEFT JOIN public.orders o ON oi.order_id = o.id
+        WHERE o.id IS NULL
+      assert: "result == 0"
+      table: public.order_items
+    - name: "No duplicate customer emails"
+      query: "SELECT COUNT(*) - COUNT(DISTINCT email) AS count FROM public.customers"
+      assert: "result == 0"
+      table: public.customers
+
+distribution:
+  enabled: false
+
+contracts:
+  enabled: false
+
+alerts:
+  noise_suppression:
+    enabled: false
+  routing: []
+
+lineage:
+  - table: public.orders
+    downstream:
+      - public.order_items
+
+late_arriving:
+  enabled: false

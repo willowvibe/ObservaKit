@@ -1,6 +1,6 @@
-# Real-World Use Cases
+# Illustrative Use Cases
 
-How real data teams use ObservaKit to solve production problems.
+Illustrative ways teams use ObservaKit to solve common data problems.
 
 ---
 
@@ -55,7 +55,7 @@ How real data teams use ObservaKit to solve production problems.
 
 Enable Distribution Drift on `public.orders.discount_pct` with `type: numeric`. ObservaKit snapshots the histogram every hour. When `discount_pct` suddenly shifts from a mean of 15% to a mean of 100%, the mean_shift detector fires an alert within 60 minutes.
 
-**Other examples of distribution drift in production:**
+**Other examples of distribution drift:**
 
 | Column | Drift type | Root cause |
 |--------|-----------|------------|
@@ -147,11 +147,11 @@ quality:
 
 ---
 
-## 7. Incident Post-Mortem: "The Silent NULL Creep"
+## 7. Illustrative Incident: "The Silent NULL Creep"
 
-**Real pattern seen in production:**
+**Illustrative pattern:**
 
-A data engineer updated a Python ETL script. A `None` value that previously raised an exception was silently coerced to `NULL` by the new version. The `email` column null rate went from 0.1% → 3% → 15% over two weeks. Nobody noticed until an email marketing campaign failed to send.
+A data engineer updated a Python ETL script. A value that previously raised an exception was silently coerced to `NULL` by the new version. The `email` column's null rate climbed over successive runs. Nobody noticed until an email campaign failed to send.
 
 **How ObservaKit catches it:**
 
@@ -167,7 +167,7 @@ distribution:
           type: categorical
 ```
 
-The alert fires when null % shifts from 0.1% to 2.1% — within the first week of the regression, not two weeks later.
+The alert fires once the null share crosses the configured threshold — early in the regression, before the failure compounds.
 
 ---
 

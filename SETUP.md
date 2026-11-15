@@ -181,3 +181,21 @@ http://localhost:8000/docs
 docker ps
 ```
 <img width="1666" height="137" alt="image" src="https://github.com/user-attachments/assets/72c8e455-f603-41b6-9f9b-0199ceadbca3" />
+
+---
+
+## 9. Running the smoke test (no Docker required)
+
+The smoke test starts the FastAPI app with a temporary SQLite metadata store
+and a temporary DuckDB warehouse. It checks health, API-key enforcement,
+freshness polling, a custom SQL quality check, and the quality Prometheus
+metrics.
+
+```bash
+make test-smoke
+```
+
+Expected: 5 passed.
+
+The default `make test` and CI run the smoke test as a separate invocation
+because it must choose SQLite before `backend.models` is imported.

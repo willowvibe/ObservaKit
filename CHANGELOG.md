@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.0.0] - 2026-11-15
+
+Portfolio release.
+
+### Added
+- One-command seeded demo: `make demo-up` starts the backend, metadata store, a real demo warehouse, Prometheus, and Grafana, then seeds 7 days of history and runs real checks.
+- The React dashboard is built into the backend image and served at `/ui`.
+- Tag-triggered GitHub Releases with a downloadable screenshot archive.
+- Docker-free smoke test (`make test-smoke`) covering health, auth, freshness, and custom SQL checks.
+
+### Changed
+- Version is set only with `scripts/set_version.sh`; CI no longer commits or pushes to `main`.
+- README reordered around a real dashboard screenshot, a one-command demo, and a consulting CTA.
+- Case study is explicitly labeled as an illustrative scenario.
+- Grafana is published on host port `3001` in the demo overlay.
+
+### Fixed
+- `/ui` was unavailable in Docker because the image never built the React app.
+- `config/kit.yml` referenced a warehouse config file that does not exist.
+
 ## [0.1.10] - 2026-04-05
 ### Added
 - **Production Resiliency**:
