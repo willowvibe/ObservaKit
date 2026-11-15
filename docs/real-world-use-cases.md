@@ -1,6 +1,6 @@
-# Real-World Use Cases
+# Illustrative Use Cases
 
-How real data teams use ObservaKit to solve production problems.
+Illustrative ways teams use ObservaKit to solve common data problems.
 
 ---
 
@@ -147,11 +147,11 @@ quality:
 
 ---
 
-## 7. Incident Post-Mortem: "The Silent NULL Creep"
+## 7. Illustrative Incident: "The Silent NULL Creep"
 
-**Real pattern seen in production:**
+**Illustrative pattern:**
 
-A data engineer updated a Python ETL script. A `None` value that previously raised an exception was silently coerced to `NULL` by the new version. The `email` column null rate went from 0.1% → 3% → 15% over two weeks. Nobody noticed until an email marketing campaign failed to send.
+A data engineer updated a Python ETL script. A value that previously raised an exception was silently coerced to `NULL` by the new version. The `email` column's null rate climbed over successive runs. Nobody noticed until an email campaign failed to send.
 
 **How ObservaKit catches it:**
 
