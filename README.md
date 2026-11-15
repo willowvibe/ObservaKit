@@ -8,13 +8,13 @@
 <p align="center"><strong>Self-hosted data observability for small data teams — free forever.</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/maintained%20by-WillowVibe-6366f1?style=flat-square" />
-  <img src="https://img.shields.io/github/license/willowvibe/ObservaKit?style=flat-square" />
-  <img src="https://img.shields.io/github/stars/willowvibe/ObservaKit?style=flat-square" />
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" />
-  <img src="https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/github/actions/workflow/status/willowvibe/ObservaKit/ci.yml?style=flat-square&label=CI" />
   <img src="https://img.shields.io/github/v/release/willowvibe/ObservaKit?style=flat-square&label=release" />
   <img src="https://img.shields.io/github/actions/workflow/status/willowvibe/ObservaKit/release.yml?style=flat-square&label=release%20workflow" />
+  <img src="https://img.shields.io/github/actions/workflow/status/willowvibe/ObservaKit/deploy-pages.yml?style=flat-square&label=pages" />
+  <img src="https://img.shields.io/github/license/willowvibe/ObservaKit?style=flat-square" />
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" />
+  <img src="https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white" />
 </p>
 
 <p align="center">
@@ -28,7 +28,37 @@
 
 ---
 
-> **ObservaKit** gives 1–5 person data teams the same observability pillars that enterprise teams pay $50k/year for — running entirely on your own infrastructure in under 10 minutes.
+![ObservaKit dashboard overview](docs/assets/screenshots/ui-overview.png)
+
+> **ObservaKit** gives 1–5 person data teams the same observability pillars that commercial platforms typically charge five figures annually for — running entirely on your own infrastructure in under 10 minutes.
+
+## Who this is for
+
+- **1–5 person data teams** that cannot justify a six-figure observability contract.
+- **Analytics engineers at seed and Series A companies** who are the de facto on-call for the warehouse.
+- **Consultants running data migrations** who need freshness, volume, and schema parity between source and destination.
+- **Platform teams** that want Prometheus and Grafana integration without another SaaS vendor.
+
+## One-command demo (no warehouse needed)
+
+```bash
+git clone https://github.com/willowvibe/ObservaKit.git
+cd ObservaKit
+make demo-up
+```
+
+This starts the backend, metadata store, a seeded demo warehouse, Prometheus, and Grafana. After about a minute, open:
+
+| Surface | URL |
+|---|---|
+| Dashboard | http://localhost:8000/ui |
+| API docs | http://localhost:8000/docs |
+| Grafana | http://localhost:3001 |
+| Prometheus | http://localhost:9090 |
+
+The demo warehouse contains 500 orders, 50 customers, and 1,200 order items. `customers` is deliberately stale and has a duplicate email so freshness and quality each have a real failure to show. The seeder runs real freshness, volume, schema, and custom SQL checks against that warehouse; the seven-day history around them is generated sample data.
+
+> The demo API key is `observakit-demo-key`. It is baked into the demo UI and is only for local use. Do not expose the demo stack to the internet.
 
 ## Why ObservaKit?
 
@@ -79,56 +109,41 @@
 | Microsoft Teams | ✅ Supported |
 | PagerDuty native | ✅ Supported |
 
-## Quickstart (under 10 minutes)
+## Screenshots
 
-### Prerequisites
-- Docker + Docker Compose v2
-- Python 3.10+
-- A supported SQL warehouse
+| Dashboard | Quality checks |
+|---|---|
+| ![Overview](docs/assets/screenshots/ui-overview.png) | ![Quality checks](docs/assets/screenshots/ui-quality.png) |
 
-### 1. Clone
+| Freshness | Alerts |
+|---|---|
+| ![Freshness](docs/assets/screenshots/ui-freshness.png) | ![Alerts](docs/assets/screenshots/ui-alerts.png) |
+
+| Column profiling | Grafana quality trends |
+|---|---|
+| ![Profiling](docs/assets/screenshots/ui-profiling.png) | ![Grafana quality](docs/assets/screenshots/grafana-quality.png) |
+
+| Grafana freshness | CLI |
+|---|---|
+| ![Grafana freshness](docs/assets/screenshots/grafana-freshness.png) | ![CLI](docs/assets/screenshots/cli-output.png) |
+
+All screenshots are captured from the demo stack by `scripts/capture_screenshots.py`.
+
+## Quickstart with your own warehouse
+
+**Prerequisites:** Docker + Docker Compose v2, Python 3.10+, and a supported SQL warehouse.
+
 ```bash
 git clone https://github.com/willowvibe/ObservaKit.git
 cd ObservaKit
-```
-
-### 2. Configure
-```bash
 cp .env.example .env
-# Minimum required: WAREHOUSE_TYPE, WAREHOUSE_HOST, WAREHOUSE_USER,
-# WAREHOUSE_PASSWORD, WAREHOUSE_DB, OBSERVAKIT_API_KEY
-```
-
-### 3. Start (Lite Mode — recommended for first run)
-```bash
-docker compose -f docker-compose.lite.yml up -d
-```
-
-For the full observability stack with Prometheus + Grafana:
-```bash
+# Set WAREHOUSE_* and OBSERVAKIT_API_KEY in .env
 docker compose up -d
 ```
 
-### 4. Try the demo (no warehouse needed)
-```bash
-make demo
-# Seeds 7 days of history with injected anomalies — dashboard populates immediately
-```
+Open http://localhost:8000/ui. If you use the legacy `docker-compose` binary, every Make target detects it automatically.
 
-### 5. Open the dashboard
-```
-http://localhost:8000/ui          ← Health grid + check results
-http://localhost:8000/docs        ← Interactive API (Swagger UI)
-http://localhost:8000/healthz     ← Kubernetes health probe
-```
-
-### 6. Add your first check
-```bash
-cp checks/templates/soda/no_nulls_on_pk.yml checks/my_project/orders.yml
-# Edit the YAML to point to your table and column
-```
-
-Checks run hourly by default. All timings are configurable in `config/kit.yml`.
+> The Docker build embeds `OBSERVAKIT_API_KEY` in the dashboard bundle so the UI can call protected endpoints. Use a dedicated key and keep ObservaKit on a trusted network.
 
 > **Full step-by-step walkthrough** → [docs/getting-started.md](docs/getting-started.md)
 
@@ -230,58 +245,9 @@ observakit test-alert         # fire a manual test notification
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    subgraph Warehouses
-        W[(PostgreSQL / BigQuery / Snowflake\nMySQL / Redshift)]
-    end
+![ObservaKit architecture](docs/assets/architecture.png)
 
-    subgraph Orchestration
-        O[Airflow / Prefect]
-    end
-
-    subgraph ObservaKit Backend
-        API[FastAPI Service]
-        S[APScheduler]
-        DB[(Metadata Store\nPostgreSQL / SQLite)]
-    end
-
-    subgraph Observability Pillars
-        F[Freshness Poller]
-        V[Volume Anomaly Detector]
-        Q[Quality Checks\nSoda / GX / Custom SQL]
-        SD[Schema Drift Engine]
-        DD[Distribution Drift Monitor]
-        DC[Data Contracts Validator]
-        P[Column Profiler]
-    end
-
-    subgraph Integrations
-        DBT[Native dbt Parser\nrun_results.json]
-        OTEL[OpenTelemetry]
-        PROM[Prometheus]
-        GRAF[Grafana]
-    end
-
-    subgraph Alerts
-        SL[Slack (Block Kit)]
-        EM[Email]
-        DI[Discord]
-        WH[Generic Webhook]
-        MS[MS Teams]
-        PD[PagerDuty]
-    end
-
-    W --> F & V & Q & SD & DD & DC & P
-    O -- REST API --> API
-    DBT --> DB
-    S --> F & V & Q & SD & DD & DC
-    F & V & Q & SD & DD & DC & P --> DB
-    API --> DB
-    API --> PROM --> GRAF
-    O --> OTEL --> PROM
-    DB --> SL & EM & DI & WH
-```
+The Mermaid source stays in [docs/architecture.md](docs/architecture.md).
 
 ## Project Structure
 
@@ -379,11 +345,26 @@ make test-cov     # Run tests with coverage report
 make lint         # Ruff linting
 make format       # Auto-format with ruff
 make migrate      # Run Alembic migrations
-make demo         # Generate 7 days of mock data with anomalies
+make demo-up      # Start the seeded demo stack (backend, warehouse, Prometheus, Grafana)
+make demo-down    # Stop the demo stack and remove volumes
+make demo-reset   # Recreate and reseed the demo stack
+make test-smoke   # Docker-free smoke test
 make logs         # Follow backend logs
 make dev          # Run in dev mode (hot reload)
 make ui-build     # Build React dashboard
 ```
+
+## A worked FinOps example (illustrative)
+
+> This is an arithmetic example, not a client result.
+
+A five-person data team spending **$8,000/month** on a warehouse runs 40 scheduled pipelines. If one pipeline scans a 30-day partition instead of a 1-day partition every night, the extra scan can add **10–20%** to the monthly bill. ObservaKit's FinOps tracker records per-pipeline scan volume and alerts when a query exceeds its configured threshold. At 10%, that is **$800/month** — visible before the invoice arrives.
+
+The numbers are assumptions for illustration. Your warehouse, pricing model, and query mix determine the real figure.
+
+## How I'd adapt this for your business
+
+I build self-hosted data observability and pipeline reliability systems for small data teams. If you have a warehouse that silently breaks, a migration that needs parity checks, or a dbt project with no test visibility, I can adapt ObservaKit to your stack and leave your team with runbooks, alert routing, and a working demo. [Get in touch](https://www.willowvibe.com).
 
 ## Documentation
 
@@ -398,7 +379,7 @@ make ui-build     # Build React dashboard
 | [FAQ](docs/faq.md) | Frequently asked questions |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
 
-> 📹 **Video walkthrough coming soon** — follow the repo to be notified.
+> 📹 **2-minute walkthrough** — see [docs/demo-script.md](docs/demo-script.md) for the shot list and narration. The rendered MP4 is attached to the [v1.0.0 release](https://github.com/willowvibe/ObservaKit/releases/tag/v1.0.0).
 
 ## Contributing
 
