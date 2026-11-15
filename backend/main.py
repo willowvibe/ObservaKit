@@ -248,6 +248,7 @@ async def get_status():
     """
     from datetime import timedelta
 
+    from sqlalchemy import Integer, cast
     from sqlalchemy import func as sqlfunc
 
     from backend.models import (
@@ -306,7 +307,7 @@ async def get_status():
             db.query(
                 CheckResult.table_name,
                 sqlfunc.count(CheckResult.id).label("total"),
-                sqlfunc.sum(CheckResult.passed.cast(sqlfunc.Integer())).label("passed"),
+                sqlfunc.sum(cast(CheckResult.passed, Integer)).label("passed"),
                 sqlfunc.max(CheckResult.executed_at).label("latest"),
             )
             .filter(CheckResult.executed_at >= cutoff_24h)

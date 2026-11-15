@@ -1,7 +1,9 @@
 # ObservaKit Backend — Python Dependencies
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
-sqlalchemy>=2.0.0
+# SQLAlchemy 2.1 defaults postgresql:// to the psycopg (v3) driver; this
+# project ships psycopg2-binary, so stay on the 2.0 line.
+sqlalchemy>=2.0.0,<2.1
 psycopg2-binary>=2.9.9
 apscheduler>=3.10.4
 prometheus-client>=0.20.0
