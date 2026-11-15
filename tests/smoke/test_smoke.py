@@ -153,6 +153,13 @@ def test_healthz(client):
     assert response.json()["database"] == "ok"
 
 
+def test_ui_config_serves_runtime_key(client):
+    response = client.get("/ui/config.js")
+    assert response.status_code == 200
+    assert "javascript" in response.headers["content-type"]
+    assert f'"{API_KEY}"' in response.text
+
+
 def test_protected_endpoint_requires_key(client):
     response = client.get("/freshness/")
     assert response.status_code == 403

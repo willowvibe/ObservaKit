@@ -38,6 +38,9 @@ Thumbs.db
 htmlcov/
 .tox/
 
+# Generated UI build tree (served by backend at /ui)
+backend/static/
+
 # Docker
 *.log
 

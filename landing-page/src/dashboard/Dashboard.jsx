@@ -23,7 +23,7 @@ import { mockApiFetch } from './demoData.js';
 // Config & fetch helper
 // ---------------------------------------------------------------------------
 const API_BASE = import.meta.env.VITE_API_URL || '';
-const API_KEY = import.meta.env.VITE_API_KEY || '';
+const API_KEY = window.__OBSERVAKIT_API_KEY__ || import.meta.env.VITE_API_KEY || '';
 // In the FastAPI build the dashboard lives at /ui/ and the landing page at
 // /ui/landing; GitHub Pages keeps the landing page at the base URL.
 const HOME = import.meta.env.BASE_URL === '/ui/'

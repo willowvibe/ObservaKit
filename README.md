@@ -143,7 +143,7 @@ docker compose up -d
 
 Open http://localhost:8000/ui. If you use the legacy `docker-compose` binary, every Make target detects it automatically.
 
-> The Docker build embeds `OBSERVAKIT_API_KEY` in the dashboard bundle so the UI can call protected endpoints. Use a dedicated key and keep ObservaKit on a trusted network.
+> The dashboard reads the API key from the backend at runtime through `/ui/config.js`, so the UI can call protected endpoints without embedding the key at build time. Changing `OBSERVAKIT_API_KEY` does not require rebuilding the image. The key is still served to any browser that can reach the UI, so use a dedicated key and keep ObservaKit on a trusted network.
 
 > **Full step-by-step walkthrough** → [docs/getting-started.md](docs/getting-started.md)
 

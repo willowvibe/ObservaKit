@@ -75,7 +75,7 @@ docker compose up -d
 Check it's running:
 ```bash
 curl http://localhost:8000/healthz
-# → {"status": "ok", "database": "ok", "version": "0.1.10"}
+# → {"status": "ok", "database": "ok", "version": "1.0.0"}
 ```
 
 ---
@@ -103,7 +103,6 @@ Edit `config/kit.yml`. At minimum, add your table to the freshness and volume mo
 ```yaml
 warehouse:
   type: postgres   # or mysql | snowflake | bigquery | redshift
-  config_file: config/warehouses/postgres.yml
 
 freshness:
   enabled: true

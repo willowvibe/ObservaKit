@@ -241,7 +241,7 @@ observakit suppress orders 4h
 Data warehouses occasionally reset connections during maintenance or high load.
 
 **Fix:**
-ObservaKit (v0.1.10+) includes an **automatic retry engine** via the `@resilient_query` decorator. This provides:
+ObservaKit (v1.0.0+) includes an **automatic retry engine** via the `@resilient_query` decorator. This provides:
 - 3 attempts per query.
 - Exponential backoff (2, 4, 8 seconds).
 - Automatic reconnection on stale sessions.

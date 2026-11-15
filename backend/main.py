@@ -3,6 +3,7 @@ ObservaKit — Data Observability Starter Kit
 FastAPI Backend Service
 """
 
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -10,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from alembic.config import Config
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import make_asgi_app
@@ -184,6 +185,19 @@ class _SPAStaticFiles(StaticFiles):
         if response is None:
             raise StarletteHTTPException(status_code=404)
         return response
+
+
+# Serve the dashboard's API key from the backend's runtime environment. This
+# must be registered before the /ui static mount so it takes precedence, and
+# lets one image work with any OBSERVAKIT_API_KEY without a rebuild.
+@app.get("/ui/config.js", include_in_schema=False)
+async def ui_config() -> Response:
+    key = json.dumps(os.getenv("OBSERVAKIT_API_KEY", ""))
+    return Response(
+        content=f"window.__OBSERVAKIT_API_KEY__ = {key};\n",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 _STATIC_DIR = Path(__file__).parent / "static"
