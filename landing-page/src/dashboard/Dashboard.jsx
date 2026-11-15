@@ -364,7 +364,7 @@ function ChecksScreen() {
                   {results.map((r, i) => (
                     <tr key={i}>
                       <td className="font-mono">{r.check_name}</td>
-                      <td className="font-mono text-sm">{r.table_name}</td>
+                      <td className="font-mono text-sm">{r.table_name || r.table}</td>
                       <td><span className="tag">{r.check_type}</span></td>
                       <td><StatusBadge status={r.passed ? 'ok' : 'fail'} /></td>
                       <td className="text-muted text-sm">{r.details || '—'}</td>

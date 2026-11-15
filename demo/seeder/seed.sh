@@ -24,4 +24,16 @@ for path in freshness/poll checks/run schema/snapshot checks/volume; do
   curl -fsS -X POST -H "X-API-Key: $API_KEY" "$BASE_URL/$path" >/dev/null
 done
 
+echo "Seeding demo alert events and column profiles..."
+for payload in \
+  '{"dag_id":"load_orders","run_id":"demo-success-001","state":"success","duration":42.5}' \
+  '{"dag_id":"load_customers","run_id":"demo-failed-001","state":"failed","duration":13.2}'; do
+  curl -fsS -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
+    -d "$payload" "$BASE_URL/webhooks/airflow" >/dev/null
+done
+for table in public.orders public.customers; do
+  curl -fsS -X POST -H "X-API-Key: $API_KEY" \
+    "$BASE_URL/profiling/run?table_name=$table" >/dev/null
+done
+
 echo "Demo seed complete."

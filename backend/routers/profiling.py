@@ -90,6 +90,8 @@ def run_profiling(table_name: str, db: Session = Depends(get_db)):
                         if row_count > 0
                         else 0,
                         "distinct_count": int(res.get("distinct_count", 0)),
+                        "min_value": res.get("min_val"),
+                        "max_value": res.get("max_val"),
                     }
                 )
         except Exception as e:
