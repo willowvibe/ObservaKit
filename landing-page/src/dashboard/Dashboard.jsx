@@ -24,6 +24,11 @@ import { mockApiFetch } from './demoData.js';
 // ---------------------------------------------------------------------------
 const API_BASE = import.meta.env.VITE_API_URL || '';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
+// In the FastAPI build the dashboard lives at /ui/ and the landing page at
+// /ui/landing; GitHub Pages keeps the landing page at the base URL.
+const HOME = import.meta.env.BASE_URL === '/ui/'
+  ? `${import.meta.env.BASE_URL}landing`
+  : import.meta.env.BASE_URL;
 
 // DemoContext lets every screen know whether to use mock data
 const DemoContext = createContext(false);
@@ -214,6 +219,7 @@ function FreshnessScreen() {
   const healthy = records.filter(r => r.status === 'ok').length;
   const warning = records.filter(r => r.status === 'warn').length;
   const failing = records.filter(r => r.status === 'fail').length;
+  const trackedTables = new Set(records.map(r => r.table)).size;
 
   return (
     <div className="screen">
@@ -249,7 +255,7 @@ function FreshnessScreen() {
         <div className="card">
           <div className="card-header">
             <h3>Table Freshness</h3>
-            <span className="text-muted text-sm">{records.length} table{records.length !== 1 ? 's' : ''} tracked</span>
+            <span className="text-muted text-sm">{trackedTables} table{trackedTables !== 1 ? 's' : ''} tracked</span>
           </div>
           {records.length === 0 ? (
             <p className="empty-state">
@@ -738,7 +744,7 @@ const Dashboard = () => {
             ))}
           </nav>
           <div className="sidebar-footer">
-            <a href={import.meta.env.BASE_URL} className="nav-link-sm">← Home</a>
+            <a href={HOME} className="nav-link-sm">← Home</a>
             <a href="/docs" target="_blank" rel="noreferrer" className="nav-link-sm">API Docs ↗</a>
             <a href="https://github.com/willowvibe/ObservaKit" target="_blank" rel="noreferrer" className="nav-link-sm">GitHub ↗</a>
           </div>

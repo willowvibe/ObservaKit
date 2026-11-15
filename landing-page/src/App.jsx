@@ -31,6 +31,10 @@ import './index.css';
 import Dashboard from './dashboard/Dashboard';
 import './dashboard/Dashboard.css';
 
+// The FastAPI build serves the dashboard at /ui/ and the landing page at
+// /ui/landing; the GitHub Pages build keeps the landing page at /.
+const IS_FASTAPI_BUILD = import.meta.env.BASE_URL === '/ui/';
+
 // ---------------------------------------------------------------------------
 // Stats Row
 // ---------------------------------------------------------------------------
@@ -145,7 +149,7 @@ function ComparisonSection() {
 function SiteNav() {
   return (
     <nav className="site-nav">
-      <Link to="/" className="nav-logo">
+      <Link to={IS_FASTAPI_BUILD ? '/landing' : '/'} className="nav-logo">
         <Activity size={18} />
         ObservaKit
       </Link>
@@ -428,8 +432,6 @@ function LandingPage() {
 // ---------------------------------------------------------------------------
 // App Router
 // ---------------------------------------------------------------------------
-const IS_FASTAPI_BUILD = import.meta.env.BASE_URL === '/ui/';
-
 function App() {
   return (
     <Router basename={import.meta.env.BASE_URL}>

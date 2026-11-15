@@ -53,7 +53,7 @@ def capture_ui(page) -> None:
     page.get_by_role("button", name="Column Profiling").click()
     page.get_by_placeholder("Table (e.g. public.orders)").fill("public.orders")
     page.get_by_role("button", name="Profile").click()
-    page.wait_for_timeout(3000)
+    page.wait_for_selector("table.data-table tbody tr", timeout=15000)
     page.screenshot(path=OUT / "ui-profiling.png", full_page=False)
 
 
@@ -88,8 +88,9 @@ def capture_cli(page) -> None:
     if not output:
         raise SystemExit("CLI returned no output")
 
-    CLI_HTML.write_text(
-        f"""<!doctype html>
+    try:
+        CLI_HTML.write_text(
+            f"""<!doctype html>
 <html><head><meta charset="utf-8"><style>
 body {{ margin: 0; background: #0b1020; color: #d7e0ff;
        font: 15px/1.55 'SFMono-Regular', Consolas, monospace; }}
@@ -102,11 +103,12 @@ pre {{ white-space: pre-wrap; }}
 <pre><span class="prompt">$</span> observakit status
 {html.escape(output)}
 </pre></div></body></html>"""
-    )
-    page.goto(CLI_HTML.as_uri(), wait_until="load")
-    page.wait_for_timeout(300)
-    page.screenshot(path=OUT / "cli-output.png", full_page=False)
-    CLI_HTML.unlink()
+        )
+        page.goto(CLI_HTML.as_uri(), wait_until="load")
+        page.wait_for_timeout(300)
+        page.screenshot(path=OUT / "cli-output.png", full_page=False)
+    finally:
+        CLI_HTML.unlink(missing_ok=True)
 
 
 def main() -> None:

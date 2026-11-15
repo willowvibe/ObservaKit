@@ -179,8 +179,10 @@ class _SPAStaticFiles(StaticFiles):
         # Extensionless paths under /ui are React Router routes, not missing
         # assets: hand them to the SPA. Real asset misses keep their 404.
         is_spa_route = "." not in path.rsplit("/", 1)[-1]
-        if (response is None or response.status_code == 404) and is_spa_route:
+        if is_spa_route and (response is None or response.status_code == 404):
             return await super().get_response("index.html", scope)
+        if response is None:
+            raise StarletteHTTPException(status_code=404)
         return response
 
 
