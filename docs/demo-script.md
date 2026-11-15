@@ -1,6 +1,6 @@
 # ObservaKit demo — 2-minute walkthrough
 
-Format: 1920×1080, H.264 + AAC, burned-in captions. Recorded from the demo stack.
+Format: 1920×1080, H.264 + AAC, voiceover only (no burned-in captions), with 0.35 s crossfades between scenes. Recorded from the demo stack.
 
 | Time | Visual | Narration |
 |---|---|---|

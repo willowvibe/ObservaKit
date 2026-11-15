@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import {
   Activity,
@@ -20,6 +20,7 @@ import {
   X,
   Minus,
   Play,
+  Volume2,
 } from 'lucide-react';
 
 // Github brand icon was removed from lucide-react v1.x — use inline SVG
@@ -37,7 +38,7 @@ import './dashboard/Dashboard.css';
 const IS_FASTAPI_BUILD = import.meta.env.BASE_URL === '/ui/';
 
 const DEMO_VIDEO_URL =
-  'https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4';
+  'https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4?v=2';
 
 // ---------------------------------------------------------------------------
 // Stats Row
@@ -175,6 +176,78 @@ function SiteNav() {
 }
 
 // ---------------------------------------------------------------------------
+// Demo video
+// ---------------------------------------------------------------------------
+function DemoVideo() {
+  const videoRef = useRef(null);
+  const [muted, setMuted] = useState(true);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    video.muted = true;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {
+            // Autoplay can still be blocked; the poster and controls remain.
+          });
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
+  const playWithSound = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    setMuted(false);
+    video.play().catch(() => {
+      video.muted = true;
+      setMuted(true);
+    });
+  };
+
+  return (
+    <div className="demo-video-frame">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        controls
+        preload="metadata"
+        poster={`${import.meta.env.BASE_URL}observakit-demo-poster.jpg`}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
+      >
+        <source src={DEMO_VIDEO_URL} type="video/mp4" />
+        Your browser does not support the video tag.{' '}
+        <a href={DEMO_VIDEO_URL}>Download the MP4</a>.
+      </video>
+      {(!playing || muted) && (
+        <button type="button" className="demo-audio-button" onClick={playWithSound}>
+          {playing ? <Volume2 size={16} /> : <Play size={16} />}
+          {playing ? 'Unmute narration' : 'Play with sound'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Landing Page
 // ---------------------------------------------------------------------------
 function LandingPage() {
@@ -274,20 +347,9 @@ function LandingPage() {
           <p className="section-subtitle">
             A real run against the seeded demo warehouse — stale data, quality checks, and the dashboard.
           </p>
-          <div className="demo-video-frame">
-            <video
-              controls
-              preload="none"
-              playsInline
-              poster={`${import.meta.env.BASE_URL}observakit-demo-poster.jpg`}
-            >
-              <source src={DEMO_VIDEO_URL} type="video/mp4" />
-              Your browser does not support the video tag.{' '}
-              <a href={DEMO_VIDEO_URL}>Download the MP4</a>.
-            </video>
-          </div>
+          <DemoVideo />
           <p className="demo-caption">
-            1080p · burned-in captions ·{' '}
+            1080p · voiceover ·{' '}
             <a href={DEMO_VIDEO_URL} target="_blank" rel="noreferrer">
               open the MP4 directly
             </a>
