@@ -308,7 +308,7 @@ ObservaKit/
 
 | Feature | ObservaKit | Monte Carlo | Metaplane | Great Expectations |
 |---------|-----------|-------------|-----------|-------------------|
-| **Price** | Free / self-hosted | $30k–$100k/yr | $15k–$50k/yr | Free (OSS) |
+| **Price** | Free / self-hosted | Commercial SaaS; typically five figures annually | Commercial SaaS; typically five figures annually | Free (OSS) |
 | **Setup time** | < 10 min | Days (sales cycle) | Days | Hours–Days |
 | **Self-hosted** | ✅ | ❌ SaaS only | ❌ SaaS only | ✅ |
 | **Freshness monitoring** | ✅ | ✅ | ✅ | ❌ |

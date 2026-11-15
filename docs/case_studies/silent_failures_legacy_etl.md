@@ -1,30 +1,32 @@
-# Case Study: Eliminating Silent Failures in Legacy ETL Migrations
+# Silent failures in a legacy ETL migration
 
-**Industry:** E-Commerce / Retail
-**Challenge:** A mid-sized retailer was migrating their legacy, on-premise ETL pipelines (a mix of cron shell scripts, SSIS, and stored procedures) to a modern cloud data stack (Snowflake and dbt). During the months-long parallel run, the data engineering team struggled to ensure that the new pipeline produced exactly the same output as the old one. Small discrepancies in daily row volumes or slight schema drifts were going unnoticed, causing a loss of trust from business stakeholders.
+> **Illustrative scenario, not a client engagement.** The company, numbers, and timeline are invented to show how ObservaKit's checks work. No client, employer, or named organization is depicted.
 
-**The Solution:** ObservaKit
+## The situation
 
-The agency deployed **ObservaKit** as a vendor-neutral observability layer to run independently alongside both the legacy systems and the new dbt/Snowflake stack.
+A mid-sized retailer is moving a legacy nightly ETL job to a modern warehouse. The migration has three risks that ordinary pipeline success alerts do not catch:
 
-## Key Implementations
+1. **Volume parity.** The new pipeline can succeed while loading fewer rows than the source.
+2. **Schema drift.** A renamed or retyped column can pass the job and break downstream reporting.
+3. **Freshness.** A partially failed load can leave the newest partition hours behind.
 
-1. **Volume Anomaly Detection (Parity Checking):**
-   ObservaKit was configured to poll the row counts of key staging and modeled tables in both the legacy database and Snowflake. 
-   - *Result:* When a legacy stored procedure silently failed to update a batch of 5,000 records, ObservaKit's volume checker instantly detected a day-over-day drop in the source data and sent an alert. Because both systems were monitored by the same tool, the team could prove the issue originated upstream, not in the new Snowflake stack.
+## What ObservaKit would surface
 
-2. **Schema Drift Detection:**
-   The client's upstream applications frequently added or modified columns without notifying the data team.
-   - *Result:* ObservaKit's schema snapshotting took hourly diffs of the `public.orders` and `public.customers` tables. When an upstream API change altered the data type of the `customer_segment` column from `VARCHAR` to `INTEGER`, ObservaKit flagged the drift, allowing the data team to update their migration scripts before the pipeline broke downstream.
+- **Volume:** compare today's row count with the 7-day rolling average. A load that drops 40% fails the volume check instead of waiting for a finance report to notice.
+- **Schema:** snapshot `information_schema` before and after the cutover. An added, removed, or retyped column is recorded as a schema diff.
+- **Freshness:** poll `max(updated_at)`. A table whose newest row is older than the SLA is marked `warn` or `fail` with the exact lag.
+- **Quality:** run a custom SQL assertion such as "no orphaned order items" against both source and destination.
 
-3. **Pipeline Health (Freshness):**
-   Legacy cron jobs were notorious for running successfully but processing data from the wrong day.
-   - *Result:* By configuring Freshness checks on the `updated_at` timestamps of the final fact tables, the team could guarantee the data wasn't just successfully transformed, but was actually recent.
+## The migration checklist
 
-## The Outcome
+```text
+1. Point ObservaKit at the source and destination warehouses.
+2. Snapshot both schemas; resolve every diff before cutover.
+3. Run volume checks against both for one full week.
+4. Run the same custom SQL quality checks on both.
+5. Cut over; keep the source checks running for one week as a backstop.
+```
 
-By treating data observability as a foundational layer rather than an afterthought, the migration was completed 3 weeks ahead of schedule.
+## What this demonstrates
 
-- **Zero "Silent" Failures:** Every data outage or discrepancy was caught by ObservaKit *before* business dashboards updated.
-- **Restored Stakeholder Trust:** The ability to demonstrably show parity between legacy and modern systems using Grafana dashboards provided the business with the confidence to fully deprecate the legacy infrastructure.
-- **Unified Tooling:** Because ObservaKit integrates with any modern orchestrator (Airflow, Prefect) or runs on a standalone cron schedule, it bridged the monitoring gap between the old world and the new world perfectly.
+The value is not a dashboard. It is a repeatable check that fails loudly when a migration is incomplete, with the table, the check, and the time window attached. The same pattern applies to any source-to-warehouse migration.

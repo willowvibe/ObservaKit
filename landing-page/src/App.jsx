@@ -329,15 +329,16 @@ function LandingPage() {
 
         <ComparisonSection />
 
-        {/* Case Study */}
+        {/* Illustrative scenario */}
         <section className="info-section animate-in delay-3">
           <div className="case-study-section">
-            <p className="section-label">Case Study</p>
+            <p className="section-label">Illustrative scenario</p>
             <h2>
-              The <span className="highlight">$100k</span> Silent Failure
+              The <span className="highlight">silent</span> pipeline failure
             </h2>
             <p className="cs-lead-text">
-              How a mid-sized fintech caught a failing pipeline before it reached the CEO's dashboard.
+              An illustrative scenario, not a client engagement. The company, numbers, and
+              timeline are invented to show how ObservaKit catches a failing pipeline.
             </p>
 
             <div className="cs-grid">
@@ -347,7 +348,7 @@ function LandingPage() {
                   <h3>The Problem</h3>
                 </div>
                 <p>
-                  An upstream API timeout caused their critical <code>transactions</code> ETL pipeline to quietly write <strong>zero rows</strong> overnight.
+                  An upstream API timeout can cause a critical <code>transactions</code> ETL pipeline to quietly write <strong>zero rows</strong> overnight.
                 </p>
                 <div className="cs-metric-box bad">
                   <span className="cs-metric-value">0</span>
@@ -369,10 +370,10 @@ function LandingPage() {
                     <strong>Volume Tracking:</strong> Daily row count collection for <code>transactions</code>.
                   </li>
                   <li>
-                    <strong>Anomaly Detection:</strong> Z-score algorithm detected a 100% volume drop at 2 AM.
+                    <strong>Anomaly Detection:</strong> A Z-score check flags a 100% volume drop.
                   </li>
                   <li>
-                    <strong>Instant Alert:</strong> Slack notification fired before anyone started their day.
+                    <strong>Instant Alert:</strong> A Slack notification goes to the on-call channel.
                   </li>
                 </ul>
               </div>
@@ -387,11 +388,11 @@ function LandingPage() {
                   <h3>The Result</h3>
                 </div>
                 <p>
-                  Data Engineering investigated and backfilled the data long before the 9:00 AM executive meeting.
+                  The alert names the table, the failed check, and the time window, so the gap is visible without a dashboard search.
                 </p>
                 <div className="cs-metric-box good">
-                  <span className="cs-metric-value">100%</span>
-                  <span className="cs-metric-label">Data Trust Maintained</span>
+                  <span className="cs-metric-value">Alert</span>
+                  <span className="cs-metric-label">Table, Check, Window</span>
                 </div>
               </div>
             </div>
