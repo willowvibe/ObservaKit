@@ -38,7 +38,7 @@ import './dashboard/Dashboard.css';
 const IS_FASTAPI_BUILD = import.meta.env.BASE_URL === '/ui/';
 
 const DEMO_VIDEO_URL =
-  'https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4';
+  'https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4?v=2';
 
 // ---------------------------------------------------------------------------
 // Stats Row
