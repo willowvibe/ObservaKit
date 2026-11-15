@@ -381,6 +381,7 @@ I build self-hosted data observability and pipeline reliability systems for smal
 | [Data Contracts](docs/data-contracts.md) | Define and enforce data contracts |
 | [Alert Setup](docs/alerting_setup.md) | Configure Slack, Email, Discord, Webhooks |
 | [Architecture](docs/architecture.md) | System design with diagrams |
+| [Demo Media](docs/demo-media.md) | How the narrated video and README GIF are built and hosted |
 | [Illustrative Use Cases](docs/real-world-use-cases.md) | Illustrative ways teams use ObservaKit |
 | [FAQ](docs/faq.md) | Frequently asked questions |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |

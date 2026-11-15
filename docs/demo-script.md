@@ -2,6 +2,8 @@
 
 Format: 1920×1080, H.264 + AAC, voiceover only (no burned-in captions), with 0.35 s crossfades between scenes. Recorded from the demo stack.
 
+The full media pipeline — recording, Pages hosting, README GIF generation, and verification — is in [demo-media.md](demo-media.md).
+
 | Time | Visual | Narration |
 |---|---|---|
 | 0:00–0:07 | Title card | Your pipeline says success. Your dashboard is three hours stale. Nobody notices until a stakeholder does. |
