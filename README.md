@@ -32,6 +32,12 @@
 
 > **ObservaKit** gives 1–5 person data teams the same observability pillars that commercial platforms typically charge five figures annually for — running entirely on your own infrastructure in under 10 minutes.
 
+## Watch the 2-minute demo
+
+[![Watch the 2-minute ObservaKit demo](docs/assets/observakit-demo-poster.jpg)](https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4)
+
+A real run against the seeded demo warehouse: the deliberately stale `customers` table, quality checks, and the dashboard. The MP4 is 1080p with burned-in captions. The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
+
 ## Who this is for
 
 - **1–5 person data teams** that cannot justify a commercial observability contract.
@@ -379,7 +385,7 @@ I build self-hosted data observability and pipeline reliability systems for smal
 | [FAQ](docs/faq.md) | Frequently asked questions |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
 
-> 📹 **2-minute walkthrough** — see [docs/demo-script.md](docs/demo-script.md) for the shot list and narration. The rendered MP4 is attached to the [v1.0.0 release](https://github.com/willowvibe/ObservaKit/releases/tag/v1.0.0).
+> 📹 **2-minute walkthrough** — [watch the demo](#watch-the-2-minute-demo) or download the [MP4 from the v1.0.0 release](https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4). The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
 
 ## Contributing
 

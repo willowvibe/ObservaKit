@@ -58,7 +58,8 @@ prometheus/data/
 .soda/
 great_expectations/uncommitted/
 
-# Demo video work
-video-work/
-observakit-demo.mp4
-observakit-demo-poster.jpg
+# Demo video work (generated at repo root; committed copies live in
+# docs/assets and landing-page/public)
+/video-work/
+/observakit-demo.mp4
+/observakit-demo-poster.jpg

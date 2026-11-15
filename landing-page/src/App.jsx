@@ -19,6 +19,7 @@ import {
   Check,
   X,
   Minus,
+  Play,
 } from 'lucide-react';
 
 // Github brand icon was removed from lucide-react v1.x — use inline SVG
@@ -34,6 +35,9 @@ import './dashboard/Dashboard.css';
 // The FastAPI build serves the dashboard at /ui/ and the landing page at
 // /ui/landing; the GitHub Pages build keeps the landing page at /.
 const IS_FASTAPI_BUILD = import.meta.env.BASE_URL === '/ui/';
+
+const DEMO_VIDEO_URL =
+  'https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4';
 
 // ---------------------------------------------------------------------------
 // Stats Row
@@ -254,10 +258,41 @@ function LandingPage() {
               <LayoutDashboard size={15} />
               Open Dashboard
             </Link>
+            <a href="#demo" className="cta-button secondary">
+              <Play size={15} />
+              Watch the demo
+            </a>
           </div>
         </section>
 
         <StatsRow />
+
+        {/* Demo video */}
+        <section id="demo" className="demo-section animate-in delay-3">
+          <p className="section-label">See it working</p>
+          <h2>Watch the 2-minute demo</h2>
+          <p className="section-subtitle">
+            A real run against the seeded demo warehouse — stale data, quality checks, and the dashboard.
+          </p>
+          <div className="demo-video-frame">
+            <video
+              controls
+              preload="none"
+              playsInline
+              poster={`${import.meta.env.BASE_URL}observakit-demo-poster.jpg`}
+            >
+              <source src={DEMO_VIDEO_URL} type="video/mp4" />
+              Your browser does not support the video tag.{' '}
+              <a href={DEMO_VIDEO_URL}>Download the MP4</a>.
+            </video>
+          </div>
+          <p className="demo-caption">
+            1080p · burned-in captions ·{' '}
+            <a href={DEMO_VIDEO_URL} target="_blank" rel="noreferrer">
+              open the MP4 directly
+            </a>
+          </p>
+        </section>
 
         {/* Features */}
         <section className="section animate-in delay-3">
