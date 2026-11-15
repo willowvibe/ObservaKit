@@ -157,6 +157,7 @@ def test_ui_config_serves_runtime_key(client):
     response = client.get("/ui/config.js")
     assert response.status_code == 200
     assert "javascript" in response.headers["content-type"]
+    assert response.headers.get("cross-origin-resource-policy") == "same-origin"
     assert f'"{API_KEY}"' in response.text
 
 

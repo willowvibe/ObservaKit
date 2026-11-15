@@ -9,8 +9,6 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-      args:
-        VITE_API_KEY: ${OBSERVAKIT_API_KEY:-}
     image: observakit-backend:local
     container_name: observakit-backend
     ports:

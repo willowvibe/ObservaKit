@@ -9,8 +9,6 @@ RUN npm ci
 COPY landing-page/ ./
 # vite.config.js reads ../VERSION relative to /ui, i.e. /VERSION
 COPY VERSION /VERSION
-ARG VITE_API_KEY=""
-ENV VITE_API_KEY=$VITE_API_KEY
 RUN VITE_BUILD_SERVE=fastapi npm run build
 
 # ---- Stage 2: runtime ----

@@ -7,8 +7,6 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-      args:
-        VITE_API_KEY: observakit-demo-key
     environment:
       - OBSERVAKIT_API_KEY=observakit-demo-key
       - WAREHOUSE_TYPE=postgres

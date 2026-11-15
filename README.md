@@ -58,7 +58,7 @@ This starts the backend, metadata store, a seeded demo warehouse, Prometheus, an
 
 The demo warehouse contains 500 orders, 50 customers, and 1,200 order items. `customers` is deliberately stale and has a duplicate email so freshness and quality each have a real failure to show. The seeder runs real freshness, volume, schema, and custom SQL checks against that warehouse; the seven-day history around them is generated sample data.
 
-> The demo API key is `observakit-demo-key`. It is baked into the demo UI and is only for local use. Do not expose the demo stack to the internet.
+> The demo API key is `observakit-demo-key`. It is served at runtime and is only for local use. Do not expose the demo stack to the internet.
 
 ## Why ObservaKit?
 
@@ -143,7 +143,7 @@ docker compose up -d
 
 Open http://localhost:8000/ui. If you use the legacy `docker-compose` binary, every Make target detects it automatically.
 
-> The dashboard reads the API key from the backend at runtime through `/ui/config.js`, so the UI can call protected endpoints without embedding the key at build time. Changing `OBSERVAKIT_API_KEY` does not require rebuilding the image. The key is still served to any browser that can reach the UI, so use a dedicated key and keep ObservaKit on a trusted network.
+> The dashboard reads the API key from the backend at runtime through `/ui/config.js`. The key is served to any browser that loads the UI from the same origin and is never embedded in the build, so changing `OBSERVAKIT_API_KEY` does not require rebuilding the image. Because any same-origin browser can read it, use a dedicated key and keep ObservaKit on a trusted network.
 
 > **Full step-by-step walkthrough** → [docs/getting-started.md](docs/getting-started.md)
 

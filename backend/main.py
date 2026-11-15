@@ -196,7 +196,11 @@ async def ui_config() -> Response:
     return Response(
         content=f"window.__OBSERVAKIT_API_KEY__ = {key};\n",
         media_type="application/javascript",
-        headers={"Cache-Control": "no-store"},
+        headers={
+            "Cache-Control": "no-store",
+            "Cross-Origin-Resource-Policy": "same-origin",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
