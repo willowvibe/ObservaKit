@@ -536,7 +536,9 @@ def generate_metadata():
 
 
 if __name__ == "__main__":
-    # Try to create warehouse tables first (optional — silently skipped on failure)
-    generate_warehouse_data()
+    # Try to create warehouse tables first (optional — silently skipped on
+    # failure). The Docker demo supplies its own warehouse, so it disables this.
+    if os.getenv("OBSERVAKIT_SEED_WAREHOUSE", "1").lower() not in ("0", "false", "no"):
+        generate_warehouse_data()
     # Always populate the metadata database
     generate_metadata()

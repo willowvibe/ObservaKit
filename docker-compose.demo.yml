@@ -19,7 +19,7 @@ services:
       - WAREHOUSE_DB=demo
       - WAREHOUSE_SCHEMA=public
     volumes:
-      - ./demo/config:/app/config:ro
+      - ./demo/config/kit.yml:/app/config/kit.yml:ro
       - ./demo/checks:/app/checks:ro
     depends_on:
       postgres:
@@ -54,6 +54,34 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
+
+  demo-seeder:
+    image: observakit-backend:local
+    container_name: observakit-demo-seeder
+    entrypoint: ["/bin/sh", "/demo/seed.sh"]
+    environment:
+      - METADATA_DB_HOST=postgres
+      - METADATA_DB_PORT=5432
+      - METADATA_DB_USER=${METADATA_DB_USER:-observakit}
+      - METADATA_DB_PASSWORD=${METADATA_DB_PASSWORD:-changeme}
+      - METADATA_DB_NAME=${METADATA_DB_NAME:-observakit}
+      - OBSERVAKIT_API_KEY=observakit-demo-key
+      - OBSERVAKIT_SEED_WAREHOUSE=0
+      - WAREHOUSE_TYPE=postgres
+      - WAREHOUSE_HOST=demo-warehouse
+      - WAREHOUSE_PORT=5432
+      - WAREHOUSE_USER=demo
+      - WAREHOUSE_PASSWORD=demo
+      - WAREHOUSE_DB=demo
+      - WAREHOUSE_SCHEMA=public
+    volumes:
+      - ./demo/seeder:/demo:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      demo-warehouse:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   demo_warehouse_data:
