@@ -34,9 +34,9 @@
 
 ## Watch the 2-minute demo
 
-[![Watch the 2-minute ObservaKit demo](docs/assets/observakit-demo-poster.jpg)](https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4?v=2)
+[![Watch the 2-minute ObservaKit demo](docs/assets/observakit-demo-poster-v2.jpg)](https://willowvibe.github.io/ObservaKit/#demo)
 
-A real run against the seeded demo warehouse: the deliberately stale `customers` table, quality checks, and the dashboard. The MP4 is 1080p with a voiceover and no burned-in captions. The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
+A real run against the seeded demo warehouse: the deliberately stale `customers` table, quality checks, and the dashboard. The [live site](https://willowvibe.github.io/ObservaKit/#demo) autoplays it; GitHub READMEs cannot play video, so the poster links there. Prefer a direct file? [Open the MP4](https://willowvibe.github.io/ObservaKit/observakit-demo.mp4) — GitHub Pages serves it inline — or [download it from the release](https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo-v2.mp4). It is 1080p with a voiceover and no burned-in captions. The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
 
 ## Who this is for
 
@@ -385,7 +385,7 @@ I build self-hosted data observability and pipeline reliability systems for smal
 | [FAQ](docs/faq.md) | Frequently asked questions |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
 
-> 📹 **2-minute walkthrough** — [watch the demo](#watch-the-2-minute-demo) or download the [MP4 from the v1.0.0 release](https://github.com/willowvibe/ObservaKit/releases/download/v1.0.0/observakit-demo.mp4?v=2). The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
+> 📹 **2-minute walkthrough** — [watch the autoplaying demo](https://willowvibe.github.io/ObservaKit/#demo) or [open the MP4](https://willowvibe.github.io/ObservaKit/observakit-demo.mp4) directly. The shot list and narration are in [docs/demo-script.md](docs/demo-script.md).
 
 ## Contributing
 
