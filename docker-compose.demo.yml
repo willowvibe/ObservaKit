@@ -1,0 +1,59 @@
+# Demo overlay. Use:
+#   docker-compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+# or: make demo-up
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        VITE_API_KEY: observakit-demo-key
+    environment:
+      - OBSERVAKIT_API_KEY=observakit-demo-key
+      - WAREHOUSE_TYPE=postgres
+      - WAREHOUSE_HOST=demo-warehouse
+      - WAREHOUSE_PORT=5432
+      - WAREHOUSE_USER=demo
+      - WAREHOUSE_PASSWORD=demo
+      - WAREHOUSE_DB=demo
+      - WAREHOUSE_SCHEMA=public
+    volumes:
+      - ./demo/config:/app/config:ro
+      - ./demo/checks:/app/checks:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      demo-warehouse:
+        condition: service_healthy
+
+  grafana:
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+
+  demo-warehouse:
+    image: postgres:16-alpine
+    container_name: observakit-demo-warehouse
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: demo
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./demo/warehouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - demo_warehouse_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  demo_warehouse_data:

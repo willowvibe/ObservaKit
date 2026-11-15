@@ -16,7 +16,7 @@ from typing import Optional
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
-from prometheus_client import Gauge
+from prometheus_client import Counter, Gauge
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,17 @@ volume_deviation_gauge = Gauge(
     "observakit_volume_deviation_pct",
     "Volume deviation fraction from rolling average",
     ["table", "dag"],
+)
+
+quality_results_total = Counter(
+    "observakit_check_results_total",
+    "Quality check results",
+    ["table", "check_type", "passed"],
+)
+quality_result_info = Gauge(
+    "observakit_check_result_info",
+    "Latest quality check result (1=passed, 0=failed)",
+    ["table", "check_name", "check_type"],
 )
 
 MIN_HISTORY_FOR_ANOMALY = 3  # Require at least this many past records before firing anomaly
@@ -231,6 +242,17 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
                 )
                 db.add(record)
 
+                quality_results_total.labels(
+                    table=res["table_name"],
+                    check_type=engine_name,
+                    passed=str(res["passed"]).lower(),
+                ).inc()
+                quality_result_info.labels(
+                    table=res["table_name"],
+                    check_name=res["check_name"],
+                    check_type=engine_name,
+                ).set(1 if res["passed"] else 0)
+
             all_results.append(res)
 
     # --- Run Custom SQL Checks ---
@@ -272,6 +294,13 @@ def run_quality_checks(dry_run: bool = False, db: Session = Depends(get_db)):
                     executed_at=datetime.now(timezone.utc),
                 )
                 db.add(record)
+
+                quality_results_total.labels(
+                    table=table, check_type="custom_sql", passed=str(passed).lower()
+                ).inc()
+                quality_result_info.labels(
+                    table=table, check_name=name, check_type="custom_sql"
+                ).set(1 if passed else 0)
 
             all_results.append(
                 {"check_name": name, "table_name": table, "passed": passed, "engine": "custom_sql"}
@@ -793,6 +822,18 @@ def run_consistency_checks(connector, db: Session) -> list[dict]:
                 executed_at=datetime.now(timezone.utc),
             )
             db.add(record)
+
+            quality_results_total.labels(
+                table=check_cfg.get("table_a", "cross-table"),
+                check_type="consistency",
+                passed=str(passed).lower(),
+            ).inc()
+            quality_result_info.labels(
+                table=check_cfg.get("table_a", "cross-table"),
+                check_name=name,
+                check_type="consistency",
+            ).set(1 if passed else 0)
+
             results.append(
                 {"check_name": name, "check_type": check_type, "passed": passed, "details": details}
             )
