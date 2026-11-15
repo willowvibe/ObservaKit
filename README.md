@@ -34,7 +34,7 @@
 
 ## Who this is for
 
-- **1–5 person data teams** that cannot justify a six-figure observability contract.
+- **1–5 person data teams** that cannot justify a commercial observability contract.
 - **Analytics engineers at seed and Series A companies** who are the de facto on-call for the warehouse.
 - **Consultants running data migrations** who need freshness, volume, and schema parity between source and destination.
 - **Platform teams** that want Prometheus and Grafana integration without another SaaS vendor.
