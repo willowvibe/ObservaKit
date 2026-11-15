@@ -538,6 +538,10 @@ function LandingPage() {
           ·{' '}
           <a href="https://github.com/willowvibe/ObservaKit" target="_blank" rel="noreferrer">
             Open Source on GitHub
+          </a>{' '}
+          ·{' '}
+          <a href="https://willowvibe.github.io/" target="_blank" rel="noreferrer">
+            More from WillowVibe
           </a>
         </p>
       </footer>
