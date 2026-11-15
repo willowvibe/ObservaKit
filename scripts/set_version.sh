@@ -13,7 +13,6 @@ cd "$repo_root"
 printf '%s\n' "$version" > VERSION
 
 python3 - "$version" <<'PY'
-import json
 import re
 import sys
 from pathlib import Path
@@ -51,7 +50,15 @@ text = re.sub(r'version="[^"]+"', f'version="{version}"', text)
 text = re.sub(r'"version": "[^"]+"', f'"version": "{version}"', text)
 p.write_text(text)
 
+# alerts/webhook.py: docstring example and outbound payload
+p = Path("alerts/webhook.py")
+text = p.read_text()
+text, n = re.subn(r'"version": "[^"]+"', f'"version": "{version}"', text)
+if n != 2:
+    raise SystemExit("alerts/webhook.py: expected 2 version fields")
+p.write_text(text)
+
 PY
 
 chmod +x "$repo_root/scripts/set_version.sh"
-echo "Set version to $version in VERSION, pyproject.toml, backend/main.py, landing-page/package.json, landing-page/package-lock.json"
+echo "Set version to $version in VERSION, pyproject.toml, backend/main.py, alerts/webhook.py, landing-page/package.json, landing-page/package-lock.json"
